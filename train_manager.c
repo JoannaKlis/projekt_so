@@ -17,6 +17,8 @@ typedef struct
     int current_train; // aktualny pociag na stacji
     int free_seat;     // numer 1 wolnego miejsca w pociagu
     int train_data[4][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
+    int passengers_waiting; // liczba oczekujacych pasazerow
+    int generating; // flaga czy pasazerowie sa generowani
     int free_bike_spots; // liczba wolnych miejsc na rowery
 } Data;
 
@@ -101,20 +103,20 @@ int main()
 
     while (1) // tworzenie pasazerow
     {
-        int passenger_pid = rand() % 10000; // generowanie PIDu pasazera
-        int has_bike = rand() % 2; // generowanie rowerow dla pasazerow
-        if (has_bike) // informacje o rowerze
+        printf("KIEROWNIK POCIAGU: Oczekujacy pasazerowie: %d.\nRozpoczynam zarzadzanie.\n", data->passengers_waiting);
+        int passengers_processed = 0;
+
+        while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
-            semaphore_wait(sem_bikes); //obsluga pasazera z rowerem
+            int passenger_pid = rand() % 10000; // generowanie PIDu pasazera
+            int has_bike = rand() % 2; // generowanie rowerow dla pasazerow
             handle_passenger(passenger_pid, has_bike, data); //obsluga pasazera w pociagu
-            semaphore_signal(sem_bikes);
-        } else
-        {
-            semaphore_wait(sem_passengers);
-            handle_passenger(passenger_pid, has_bike, data);
-            semaphore_signal(sem_passengers); //obsluga pasazera bez roweru
+            data->passengers_waiting--;
+            passengers_processed++;
         }
-        sleep(1);
+
+        printf("KIEROWNIK POCIAGU: Obsluzono %d pasazerow.\nPozostali oczekujacy: %d.\n", passengers_processed, data->passengers_waiting);
+        sleep(2);
     }
 
     shmdt(data); // odlaczenie pamieci dzielonej

@@ -6,6 +6,7 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #define SHM_KEY 1234
 #define MAX_TRAINS 4
@@ -64,8 +65,26 @@ void station_master(Data *data, int N)
             break;
         }
 
-        printf("ZARZADCA: Pociag %d przyjechal.\nLiczba wolnych miejsc: %d\nLiczba rowerow: %d\n", data->current_train, data->free_seat, data->free_bike_spots);
-        sleep(5); // czas na wsiadanie pasazerow
+        printf("ZARZADCA: Pociag %d przyjechal.\n", data->current_train);
+        sleep(2); // czas na wsiadanie pasazerow
+
+        printf("ZARZADCA: Generowanie pasazerow.\n");
+        int passengers_to_generate = 10 + rand() % 11; // generowanie pasazerow od 10 do 20
+        data->passengers_waiting += passengers_to_generate; // zaktualizowanie liczby pasazerow
+        printf("ZARZADCA: Wygenerowano %d pasazerow. Oczekujacy pasazerowie: %d.\n", passengers_to_generate, data->passengers_waiting);
+        sleep(2);
+
+        printf("ZARZADCA: Pasazerowie wsiadaja do pociagu %d.\n", data->current_train);
+        int passengers_boarded = 0;
+        while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
+        {
+            data->train_data[data->current_train][data->free_seat] = 1; // 1 oznacza zajete miejsce
+            data->free_seat++;
+            data->passengers_waiting--;
+            passengers_boarded++;
+        }
+        printf("ZARZADCA: Wsiadlo %d pasazerow. Pozostali oczekujacy: %d.\n", passengers_boarded, data->passengers_waiting);
+        sleep(2);
 
         printf("ZARZADCA: Pociag %d odjezdza.\n", data->current_train);
         data->current_train = (data->current_train + 1) % N;
@@ -78,6 +97,7 @@ void station_master(Data *data, int N)
 
 int main() 
 {
+    srand(time(NULL));
     int shmid;
     Data *data;
 
