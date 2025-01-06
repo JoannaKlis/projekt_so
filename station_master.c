@@ -68,30 +68,33 @@ void station_master(Data *data, int N)
         printf("ZARZADCA: Pociag %d przyjechal.\n", data->current_train);
         sleep(2); // czas na wsiadanie pasazerow
 
-        printf("ZARZADCA: Generowanie pasazerow.\n");
-        int passengers_to_generate = 10 + rand() % 11; // generowanie pasazerow od 10 do 20
-        data->passengers_waiting += passengers_to_generate; // zaktualizowanie liczby pasazerow
-        printf("ZARZADCA: Wygenerowano %d pasazerow. Oczekujacy pasazerowie: %d.\n", passengers_to_generate, data->passengers_waiting);
-        sleep(2);
-
         printf("ZARZADCA: Pasazerowie wsiadaja do pociagu %d.\n", data->current_train);
-        int passengers_boarded = 0;
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
-            data->train_data[data->current_train][data->free_seat] = 1; // 1 oznacza zajete miejsce
+            int passenger_pid = rand() % 10000; // pid pasazerow
+            int has_bike = rand() % 2; // czy pasazer ma rower
+
+            data->train_data[data->current_train][data->free_seat] = passenger_pid; //
+            if (has_bike) 
+            {
+                printf("ZARZADCA: Pasazer %d z rowerem wszedl do pociagu %d i zajal miejsce %d.\n",passenger_pid, data->current_train, data->free_seat);
+            } else 
+            {
+                printf("ZARZADCA: Pasazer %d wszedl do pociagu %d i zajal miejsce %d.\n",passenger_pid, data->current_train, data->free_seat);
+            }
+
             data->free_seat++;
             data->passengers_waiting--;
-            passengers_boarded++;
         }
-        printf("ZARZADCA: Wsiadlo %d pasazerow. Pozostali oczekujacy: %d.\n", passengers_boarded, data->passengers_waiting);
+        printf("ZARZADCA: Oczekujacy pasazerowie: %d.\n", data->passengers_waiting);
         sleep(2);
 
         printf("ZARZADCA: Pociag %d odjezdza.\n", data->current_train);
-        data->current_train = (data->current_train + 1) % N;
+        data->current_train = (data->current_train + 1) % N; //
         data->free_seat = 0; // reset wolnych miejsc
         data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
 
-        sleep(2); // czas na przyjazd nowego pociągu
+        sleep(4); // czas na przyjazd nowego pociągu
     }
 }
 
