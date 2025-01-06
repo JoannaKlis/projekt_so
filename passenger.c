@@ -52,7 +52,7 @@ int main()
         data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerow
         int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
         data->free_bike_spots = passengers_with_bikes; // zwiekszenie liczby pasazerow z rowerami
-        printf("PASAZER: Wygenerowano %d nowych pasazerow, z czego %d ma rowery.\nLiczba wszystkich oczekujacych: %d.\n", passengers_to_generate, passengers_with_bikes, data->passengers_waiting);
+        printf("PASAZER: Wygenerowano %d nowych pasazerow.\nLiczba wszystkich oczekujacych: %d.\n", passengers_to_generate, data->passengers_waiting);
         sleep(2);
     }
 

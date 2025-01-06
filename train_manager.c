@@ -108,7 +108,7 @@ int main()
 
     while (1) // tworzenie pasazerow
     {
-        printf("KIEROWNIK POCIAGU: Oczekujacy pasazerowie: %d.\nRozpoczynam zarzadzanie.\n", data->passengers_waiting);
+        printf("KIEROWNIK POCIAGU: Rozpoczynam zarzadzanie.\n", data->passengers_waiting);
 
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
@@ -117,7 +117,6 @@ int main()
             handle_passenger(passenger_pid, has_bike, data, sem_passengers, sem_bikes); //obsluga pasazera w pociagu
             data->passengers_waiting--;
         }
-        printf("KIEROWNIK POCIAGU: Pozostali oczekujacy: %d.\n", data->passengers_waiting);
         sleep(2);
     }
     shmdt(data); // odlaczenie pamieci dzielonej
