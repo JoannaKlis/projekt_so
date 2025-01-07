@@ -76,6 +76,16 @@ void handle_passenger(int passenger_pid, int has_bike, Data *data, int sem_passe
     semaphore_signal(sem_passengers); // Odblokowanie semafora pasazerow
 }
 
+void log_station_arrival(Data *data, int station) 
+{
+    printf("KIEROWNIK POCIAGU: Pociag %d dotarl na stacje %d.\n", data->current_train, station);
+}
+
+void log_station_departure(Data *data, int station) 
+{
+    printf("KIEROWNIK POCIAGU: Pociag %d opuszcza stacje %d.\n", data->current_train, station);
+}
+
 int main()
 {
     int shmid = shmget(SHM_KEY, sizeof(Data), 0600);
@@ -108,7 +118,7 @@ int main()
 
     while (data->passengers_waiting > 0 || data->generating) // zarzadzanie pasazerow
     {
-        printf("KIEROWNIK POCIAGU: Rozpoczynam zarzadzanie.\n", data->passengers_waiting);
+        log_station_arrival(data, 1); // przybycie na stacje 1
 
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
@@ -123,7 +133,17 @@ int main()
                 break;
             }
         }
-        sleep(2);
+        log_station_departure(data, 1); // odjazd ze stacji 1
+
+        sleep(3); // czas przejazdu do stacji 2
+
+        log_station_arrival(data, 2); // przybycie na stacje 2
+        printf("KIEROWNIK POCIAGU: Wysadzanie pasazerow na stacji 2.\n");
+        data->free_seat = 0; // wysadzenie wszystkich pasazerow
+
+        log_station_departure(data, 2); // odjazd ze stacji 2
+
+        sleep(3); // czas powrotu do stacji 1
     }
     shmdt(data); // odlaczenie pamieci dzielonej
     return 0;

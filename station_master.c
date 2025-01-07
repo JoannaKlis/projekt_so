@@ -64,8 +64,9 @@ void station_master(Data *data, int N)
             printf("ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n");
             break;
         }
-
-        printf("ZARZADCA: Pociag %d przyjechal.\n", data->current_train);
+        
+        printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
+        printf("ZARZADCA: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
         sleep(2); // czas na wsiadanie pasazerow
 
         printf("ZARZADCA: Pasazerowie wsiadaja do pociagu %d.\n", data->current_train);
@@ -86,15 +87,23 @@ void station_master(Data *data, int N)
             data->free_seat++;
             data->passengers_waiting--;
         }
-        printf("ZARZADCA: Oczekujacy pasazerowie: %d.\n", data->passengers_waiting);
         sleep(2);
 
-        printf("ZARZADCA: Pociag %d odjezdza.\n", data->current_train);
+        printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
+        sleep(4); // czas na przyjazd do stacji 2
+
+        printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
+        printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
+        data->free_seat = 0; // reset wolnych miejsc po wysadzeniu
+
+        printf("ZARZADCA: Pociag %d odjezdza ze stacji 2.\n", data->current_train);
+        sleep(4); // czas na powrot do stacji 1
+
         data->current_train = (data->current_train + 1) % N; // cykl z pociagami
         data->free_seat = 0; // reset wolnych miejsc
         data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
 
-        sleep(4); // czas na przyjazd nowego pociągu
+        printf("ZARZADCA: Przygotowano pociag %d na powrot do stacji 1.\n", data->current_train);
     }
 }
 

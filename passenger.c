@@ -27,6 +27,11 @@ void handle_sigint(int sig) //ctrl+c przerywa generowanie
     running = 0; // flaga na 0 przerywa petle
 }
 
+void notify_disembarkation(int train, int station) 
+{
+    printf("PASAZER: Pociag %d wysadzil pasazerow na stacji %d.\n", train, station);
+}
+
 int main()
 {
     signal(SIGINT, handle_sigint);
@@ -53,7 +58,13 @@ int main()
         data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerow
         int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
         data->free_bike_spots = passengers_with_bikes; // zwiekszenie liczby pasazerow z rowerami
-        printf("PASAZER: Wygenerowano %d nowych pasazerow.\nLiczba wszystkich oczekujacych: %d.\n", passengers_to_generate, data->passengers_waiting);
+        printf("PASAZER: Wygenerowano %d nowych pasazerow.\n", passengers_to_generate);
+
+        if (data->current_train == 2) //stacja 2
+        {
+            notify_disembarkation(data->current_train, 2);
+        }
+
         sleep(2);
     }
 
