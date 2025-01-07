@@ -45,14 +45,14 @@ void semaphore_signal(int semid) //odblokowanie semafora
 void handle_passenger(int passenger_pid, int has_bike, Data *data, int sem_passengers, int sem_bikes) // zarzadzanie pasazerami i rowerami
 {
     semaphore_wait(sem_passengers); // zablokowanie dostepu do danych pasazerow
-    int train = data->current_train; //
+    int train = data->current_train; //aktualny pociag
 
     if (has_bike) 
     {
         semaphore_wait(sem_bikes); // zablokowanie dostepu do danych rowerow
         if (data->free_seat < MAX_PASSENGERS && data->free_bike_spots > 0) 
         {
-            data->train_data[train][data->free_seat] = passenger_pid; //
+            data->train_data[train][data->free_seat] = passenger_pid; // dodanie pasazera do pociagu
             printf("KIEROWNIK POCIAGU: Pasazer %d z rowerem wszedl do pociagu %d i zajal miejsce %d.\n", passenger_pid, train, data->free_seat);
             data->free_seat++;
             data->free_bike_spots--;
@@ -65,7 +65,7 @@ void handle_passenger(int passenger_pid, int has_bike, Data *data, int sem_passe
     {
         if (data->free_seat < MAX_PASSENGERS)
         {
-            data->train_data[train][data->free_seat] = passenger_pid; //
+            data->train_data[train][data->free_seat] = passenger_pid;
             printf("KIEROWNIK POCIAGU: Pasazer %d wszedl do pociagu %d i zajal miejsce %d.\n", passenger_pid, train, data->free_seat);
             data->free_seat++;
         } else
@@ -106,7 +106,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    while (1) // tworzenie pasazerow
+    while (data->passengers_waiting > 0 || data->generating) // zarzadzanie pasazerow
     {
         printf("KIEROWNIK POCIAGU: Rozpoczynam zarzadzanie.\n", data->passengers_waiting);
 
@@ -116,6 +116,12 @@ int main()
             int has_bike = rand() % 2; // generowanie rowerow dla pasazerow
             handle_passenger(passenger_pid, has_bike, data, sem_passengers, sem_bikes); //obsluga pasazera w pociagu
             data->passengers_waiting--;
+
+            if (data->passengers_waiting == 0 && !data->generating) 
+            {
+                printf("KIEROWNIK POCIAGU: Brak oczekujacych pasazerow. KONIEC DZIALANIA.\n");
+                break;
+            }
         }
         sleep(2);
     }

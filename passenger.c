@@ -31,6 +31,7 @@ int main()
 {
     signal(SIGINT, handle_sigint);
     srand(time(NULL));
+    int max_waiting_passengers = 100; //tymczasowy stoper pasazerow
 
     int shmid = shmget(SHM_KEY, sizeof(Data), 0600); // identyfikator pamieci dzielonej
     if (shmid < 0) 
@@ -46,7 +47,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    while (running)
+    while (running && data->passengers_waiting <= max_waiting_passengers)
     {
         int passengers_to_generate = 10 + rand() % 11; // losowa liczba pasazerow od 10 do 20
         data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerow
@@ -54,6 +55,11 @@ int main()
         data->free_bike_spots = passengers_with_bikes; // zwiekszenie liczby pasazerow z rowerami
         printf("PASAZER: Wygenerowano %d nowych pasazerow.\nLiczba wszystkich oczekujacych: %d.\n", passengers_to_generate, data->passengers_waiting);
         sleep(2);
+    }
+
+    if (data->passengers_waiting > max_waiting_passengers) 
+    {
+        printf("PASAZER: Liczba oczekujących pasazerow przekroczyla 100. KONIEC DZIALANIA.\n");
     }
 
     data->generating = 0; // flaga generowanie zakonczone

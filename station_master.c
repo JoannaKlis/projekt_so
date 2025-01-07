@@ -59,7 +59,7 @@ void station_master(Data *data, int N)
 {
     while (1)  // dzialanie zarzadcy
     {
-        if (data->passengers_waiting == 0 && data->generating == 0) 
+        if (data->passengers_waiting == 0 && !data->generating) 
         {
             printf("ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n");
             break;
@@ -74,7 +74,7 @@ void station_master(Data *data, int N)
             int passenger_pid = rand() % 10000; // pid pasazerow
             int has_bike = rand() % 2; // czy pasazer ma rower
 
-            data->train_data[data->current_train][data->free_seat] = passenger_pid; //
+            data->train_data[data->current_train][data->free_seat] = passenger_pid; // dodanie pasazera do pociagu
             if (has_bike) 
             {
                 printf("ZARZADCA: Pasazer %d z rowerem wszedl do pociagu %d i zajal miejsce %d.\n",passenger_pid, data->current_train, data->free_seat);
@@ -90,7 +90,7 @@ void station_master(Data *data, int N)
         sleep(2);
 
         printf("ZARZADCA: Pociag %d odjezdza.\n", data->current_train);
-        data->current_train = (data->current_train + 1) % N; //
+        data->current_train = (data->current_train + 1) % N; // cykl z pociagami
         data->free_seat = 0; // reset wolnych miejsc
         data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
 
