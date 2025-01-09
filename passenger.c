@@ -5,9 +5,12 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <time.h>
+#include <pthread.h>
+#include <termios.h>
 
 #define SHM_KEY 1234
 #define MAX_PASSENGERS 10
+#define MAX_TRAINS 4
 
 typedef struct
 {
@@ -19,12 +22,35 @@ typedef struct
     int free_bike_spots; // liczba wolnych miejsc na rowery
 } Data;
 
-int running = 1; // flaga na petle generujaca pasazerow
+volatile sig_atomic_t running = 1; // flaga kontrolna dla procesu
 
-void handle_sigint(int sig) //ctrl+c przerywa generowanie
+void handle_signal(int signal) // sygnal na przerwanie dzialania
 {
-    printf("PASAZER: Otrzymalem sygnal.\nKoniec generowania pasazerow.\n");
-    running = 0; // flaga na 0 przerywa petle
+    printf("PASAZER: Otrzymalem sygnal %d\n", signal);
+    running = 0;
+}
+
+void *keyboard_signal(void *arg)
+{
+    struct termios oldt, newt; // deklaracja zmiennych terminalowych
+    tcgetattr(STDIN_FILENO, &oldt); // pobranie obecnych ustawien terminala
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);  
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt); // modyfikacja ustawien terminala
+
+    while (running) // petla na odczyt sygnalu
+    {
+        char ch = getchar();
+        if (ch == 14) // ASCII dla CTRL+N
+        {
+            printf("PASAZER: Przeslano sygnal CTRL+N. Koniec generowania pasazerow.\n");
+            running = 0;
+            break;
+        }
+    }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // stare ustawienia
+    return NULL; // koniec watku
 }
 
 void notify_disembarkation(int train, int station) 
@@ -34,9 +60,11 @@ void notify_disembarkation(int train, int station)
 
 int main()
 {
-    signal(SIGINT, handle_sigint);
+    printf("PASAZER: rozpoczynam proces PID: %d\n", getpid());
+    signal(SIGUSR1, handle_signal);
     srand(time(NULL));
-    int max_waiting_passengers = 100; //tymczasowy stoper pasazerow
+    pthread_t keyboard_thread; // deklaracja zmiennej watku
+    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
 
     int shmid = shmget(SHM_KEY, sizeof(Data), 0600); // identyfikator pamieci dzielonej
     if (shmid < 0) 
@@ -52,13 +80,14 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    while (running && data->passengers_waiting <= max_waiting_passengers)
+    while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
     {
         int passengers_to_generate = 10 + rand() % 11; // losowa liczba pasazerow od 10 do 20
         data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerow
-        int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
-        data->free_bike_spots = passengers_with_bikes; // zwiekszenie liczby pasazerow z rowerami
+        //int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
+        //data->free_bike_spots = passengers_with_bikes; // zwiekszenie liczby pasazerow z rowerami
         printf("PASAZER: Wygenerowano %d nowych pasazerow.\n", passengers_to_generate);
+        printf("PASAZER: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
 
         if (data->current_train == 2) //stacja 2
         {
@@ -68,12 +97,19 @@ int main()
         sleep(2);
     }
 
-    if (data->passengers_waiting > max_waiting_passengers) 
+    data->generating = 0; // flaga generowanie zakonczone
+    pthread_join(keyboard_thread, NULL); // synchronizacja watku keyboard z glownym
+    shmdt(data); // odlaczenie struktur
+
+    if (shmdt(data) == -1) 
     {
-        printf("PASAZER: Liczba oczekujących pasazerow przekroczyla 100. KONIEC DZIALANIA.\n");
+    perror("PASAZER: Blad odlaczenia pamieci dzielonej");
+    }
+    if (shmctl(shmid, IPC_RMID, NULL) == -1) 
+    {
+    perror("PASAZER: Blad usuniecia segmentu pamieci dzielonej");
     }
 
-    data->generating = 0; // flaga generowanie zakonczone
-    shmdt(data); // odlaczenie pamieci dzielonej
+    printf("PASAZER: Proces zakonczony\n");
     return 0;
 }
