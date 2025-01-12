@@ -4,15 +4,12 @@
 #include <signal.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/sem.h>
 #include <sys/wait.h>
 #include <time.h>
 
-#define SHM_KEY 1234
+#define SHM_KEY 9876
 #define MAX_TRAINS 4
 #define MAX_PASSENGERS 10
-#define SEM_KEY_PASSENGERS 5678
-#define SEM_KEY_BIKES 5679
 #define MAX_BIKES 5
 
 typedef struct 
@@ -25,52 +22,42 @@ typedef struct
     int free_bike_spots; // liczba wolnych miejsc na rowery 
 } Data;
 
-void init_shared_memory(int *shmid, Data **data) // tworzenie pamieci dzielonej
+int memory, detach, detach2;
+Data *data = NULL; // globalny wskaznik dla pamieci dzielonej
+
+void shared_memory_create()
 {
-    *shmid = shmget(SHM_KEY, sizeof(Data), IPC_CREAT | 0600);
-    if (*shmid < 0) 
+    memory = shmget(SHM_KEY, sizeof(Data), IPC_CREAT | 0600);
+    if (memory < 0)
     {
         perror("ZARZADCA: Blad utworzenia segmentu pamieci dzielonej!");
         exit(EXIT_FAILURE);
     }
-    *data = (Data *)shmat(*shmid, NULL, 0);
-    if (*data == (void *)-1)
+}
+
+void shared_memory_address()
+{
+    data = (Data *)shmat(memory, NULL, 0);
+    if (data == (void *)-1)
     {
         perror("ZARZADCA: Blad dostepu do segmentu pamieci dzielonej!");
         exit(EXIT_FAILURE);
     }
+}
 
-    (*data)->free_bike_spots = MAX_BIKES;
-    for (int i = 0; i < MAX_TRAINS; i++) 
+void shared_memory_detach()
+{
+    detach = shmctl(memory, IPC_RMID, 0); 
+    sleep(2);
+    detach2 = shmdt(data);
+    if (detach == -1 || detach2 == -1) 
     {
-        for (int j = 0; j < MAX_PASSENGERS; j++) 
-        {
-            (*data)->train_data[i][j] = 0;
-        }
+        perror("ZARZADCA: Blad odlaczenia pamieci dzielonej");
+        exit(EXIT_FAILURE);
     }
-} 
-
-void cleanup_shared_memory(int shmid, Data *data) // czyszczenie pamieci
-{
-    shmdt(data);
-    shmctl(shmid, IPC_RMID, NULL);
 }
 
-void init_semaphores() //inicjacja semaforow
-{
-    int sem_passengers = semget(SEM_KEY_PASSENGERS, 1, IPC_CREAT | 0600);
-    int sem_bikes = semget(SEM_KEY_BIKES, 1, IPC_CREAT | 0600);
-    semctl(sem_passengers, 0, SETVAL, 1);
-    semctl(sem_bikes, 0, SETVAL, 1);
-}
-
-void cleanup_semaphores() // czyszczenie semaforow
-{
-    semctl(semget(SEM_KEY_PASSENGERS, 1, 0), 0, IPC_RMID);
-    semctl(semget(SEM_KEY_BIKES, 1, 0), 0, IPC_RMID);
-}
-
-void station_master(Data *data, int N) 
+void station_master(Data *data) 
 {
     while (1)  // dzialanie zarzadcy
     {
@@ -79,38 +66,39 @@ void station_master(Data *data, int N)
             printf("ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n");
             break;
         }
+        if (data->passengers_waiting > 0)
+        {
+            printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
+            sleep(5); // czas na wsiadanie pasazerow
+
+            printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
+            sleep(4); // czas na przyjazd do stacji 2
+
+            printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
+            sleep(1);
+
+            printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
+            sleep(2);
+
+            data->free_seat = 0; // reset wolnych miejsc po wysadzeniu
+            data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
         
-        printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
-        sleep(5); // czas na wsiadanie pasazerow
+            printf("ZARZADCA: Pociag %d odjezdza ze stacji 2.\n", data->current_train);
+            sleep(4); // czas na powrot do stacji 1
 
-        printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
-        sleep(4); // czas na przyjazd do stacji 2
+            data->current_train = (data->current_train + 1) % MAX_TRAINS; // cykl z pociagami
 
-        printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
-        sleep(1);
-        printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
-        sleep(2);
-
-        data->free_seat = 0; // reset wolnych miejsc po wysadzeniu
-        data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
-        
-        printf("ZARZADCA: Pociag %d odjezdza ze stacji 2.\n", data->current_train);
-        sleep(4); // czas na powrot do stacji 1
-
-        data->current_train = (data->current_train + 1) % N; // cykl z pociagami
-
-        printf("ZARZADCA: Pociag %d wrocil na stacje 1.\n", data->current_train);
+            printf("ZARZADCA: Pociag %d wrocil na stacje 1.\n", data->current_train);
+        }
     }
 }
 
 int main() 
 {
     srand(time(NULL));
-    int shmid;
-    Data *data;
 
-    init_shared_memory(&shmid, &data); // inicjalizacja pamieci dzielonej
-    init_semaphores(); // inicjalizacja semaforow
+    shared_memory_create();
+    shared_memory_address();
 
     data->current_train = 0; // reset wyboru pociagu
     data->free_seat = 0; // reset wolnych miejsc
@@ -142,12 +130,11 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    station_master(data);
 
-    station_master(data, MAX_TRAINS);
+    waitpid(train_manager_pid, NULL, 0); // czekanie na zakonczenie procesow potomnych
+    waitpid(passenger_pid, NULL, 0); 
 
-    waitpid(passenger_pid, NULL, 0); // czekanie na zakonczenie procesow potomnych
-
-    cleanup_shared_memory(shmid, data); // czyszczenie pamieci dzielonej
-    cleanup_semaphores(); // czyszczenie semaforow
+    shared_memory_detach();
     return 0;
 }

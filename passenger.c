@@ -8,7 +8,7 @@
 #include <pthread.h>
 #include <termios.h>
 
-#define SHM_KEY 1234
+#define SHM_KEY 9876
 #define MAX_PASSENGERS 10
 #define MAX_TRAINS 4
 
@@ -23,6 +23,7 @@ typedef struct
 } Data;
 
 volatile sig_atomic_t running = 1; // flaga kontrolna dla procesu
+Data *data = NULL; // globalny wskaxnik dla pamieci dzielonej
 
 void handle_signal(int signal) // sygnal na przerwanie dzialania
 {
@@ -58,58 +59,69 @@ void notify_disembarkation(int train, int station)
     printf("PASAZER: Pociag %d wysadzil pasazerow na stacji %d.\n", train, station);
 }
 
+int memory, detach;
+
+void shared_memory_create()
+{
+    memory = shmget(SHM_KEY, sizeof(Data), 0600);
+    if (memory < 0)
+    {
+        perror("PASAZER: Blad utworzenia segmentu pamieci dzielonej!");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void shared_memory_address()
+{
+    data = (Data *)shmat(memory, NULL, 0);
+    if (data == (void *)-1)
+    {
+        perror("PASAZER: Blad dostepu do segmentu pamieci dzielonej!");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void shared_memory_detach()
+{
+    detach = shmdt(data);
+    if (detach == -1) 
+    {
+        perror("PASAZER: Blad odlaczenia pamieci dzielonej");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main()
 {
-    printf("PASAZER: rozpoczynam proces PID: %d\n", getpid());
+    printf("PASAZER: Rozpoczynam proces PID: %d\n", getpid());
     signal(SIGUSR1, handle_signal);
     srand(time(NULL));
     pthread_t keyboard_thread; // deklaracja zmiennej watku
     pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
 
-    int shmid = shmget(SHM_KEY, sizeof(Data), 0600); // identyfikator pamieci dzielonej
-    if (shmid < 0) 
-    {
-        perror("PASAZER: Blad utworzenia segmentu pamieci dzielonej!");
-        exit(EXIT_FAILURE);
-    }
-
-    Data *data = (Data *)shmat(shmid, NULL, 0); // dolaczenie segmentu pamieci dzielonej
-    if (data == (void *)-1) 
-    {
-        perror("PASAZER: Blad dostepu do segmentu pamieci dzielonej!");
-        exit(EXIT_FAILURE);
-    }
+    shared_memory_create();
+    shared_memory_address();
 
     while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
     {
-        int passengers_to_generate = 10 + rand() % 11; // losowa liczba pasazerow od 10 do 20
+        int passengers_to_generate = 5 + rand() % 6; // losowa liczba pasazerow 5-10
         data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerow
         //int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
         //data->free_bike_spots = passengers_with_bikes; // zwiekszenie liczby pasazerow z rowerami
         printf("PASAZER: Wygenerowano %d nowych pasazerow.\n", passengers_to_generate);
         printf("PASAZER: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
+        sleep(3);
 
         if (data->current_train == 2) //stacja 2
         {
             notify_disembarkation(data->current_train, 2);
         }
-
         sleep(2);
     }
-
     data->generating = 0; // flaga generowanie zakonczone
+
     pthread_join(keyboard_thread, NULL); // synchronizacja watku keyboard z glownym
-    shmdt(data); // odlaczenie struktur
-
-    if (shmdt(data) == -1) 
-    {
-    perror("PASAZER: Blad odlaczenia pamieci dzielonej");
-    }
-    if (shmctl(shmid, IPC_RMID, NULL) == -1) 
-    {
-    perror("PASAZER: Blad usuniecia segmentu pamieci dzielonej");
-    }
-
+    shared_memory_detach();
     printf("PASAZER: Proces zakonczony\n");
     return 0;
 }
