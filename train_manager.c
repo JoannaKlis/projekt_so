@@ -77,7 +77,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
     }
     printf("KIEROWNIK POCIAGU: Rozpoczynam zarzadzanie pasazerami dla pociagu %d.\n", data->current_train);
 
-    while (data->passengers_waiting > 0 || data->generating) 
+    while (data->generating != -1) // flaga na sprawdzenie zakonczenia dzialania zarzadcy
     {
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
@@ -87,6 +87,10 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
             data->passengers_waiting--;
             printf("KIEROWNIK POCIAGU: Pasazer wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
             semaphore_signal(sem_passengers); // odblokowanie semafora pasazerow
+        }
+        if (data->free_seat == MAX_PASSENGERS)
+        {
+            printf("KIEROWNIK POCIAGU: Pociag %d jest pelny i gotowy do odjazdu.\n", data->current_train);
         }
         sleep(1);
 

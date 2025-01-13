@@ -64,6 +64,7 @@ void station_master(Data *data)
         if (data->passengers_waiting == 0 && !data->generating) 
         {
             printf("ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n");
+            data->generating = -1; // flaga - zarzadca konczy dzialanie
             break;
         }
         if (data->passengers_waiting > 0)
@@ -71,20 +72,20 @@ void station_master(Data *data)
             printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
             sleep(5); // czas na wsiadanie pasazerow
 
-            printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
-            sleep(4); // czas na przyjazd do stacji 2
+            if (data->free_seat == MAX_PASSENGERS) // Wtylko pelny pociag moze opuscic stacje
+            {
+                printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
+                sleep(4); // czas na przyjazd do stacji 2
 
-            printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
-            sleep(1);
+                printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
+                sleep(1);
 
-            printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
-            sleep(2);
+                printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
+                sleep(2);
 
-            data->free_seat = 0; // reset wolnych miejsc po wysadzeniu
-            data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
-        
-            printf("ZARZADCA: Pociag %d odjezdza ze stacji 2.\n", data->current_train);
-            sleep(4); // czas na powrot do stacji 1
+                data->free_seat = 0; // reset wolnych miejsc po wysadzeniu
+                data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
+            }
 
             data->current_train = (data->current_train + 1) % MAX_TRAINS; // cykl z pociagami
 
