@@ -4,8 +4,10 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <errno.h>
 
 #define SHM_KEY 9876
+#define SEM_KEY 5912
 #define MAX_PASSENGERS 10
 #define SEM_KEY_PASSENGERS 5678
 #define SEM_KEY_BIKES 5679
@@ -20,6 +22,7 @@ typedef struct
     int passengers_waiting; // liczba oczekujacych pasazerow
     int generating; // flaga czy pasazerowie sa generowani
     int free_bike_spots; // liczba wolnych miejsc na rowery
+    int passengers_with_bikes; // pasazerowie z rowerami
 } Data;
 
 void semaphore_wait(int semid) //blokowanie dostepu do semafora
@@ -44,11 +47,17 @@ void semaphore_signal(int semid) //odblokowanie semafora
 
 int semaphore_create(key_t key)
 {
-    int semid = semget(key, 1, IPC_CREAT | 0600);
+int semid = semget(key, 1, IPC_CREAT | IPC_EXCL | 0600);
     if (semid == -1) 
     {
-        perror("KIEROWNIK POCIAGU: Blad utworzenia semafora");
-        exit(EXIT_FAILURE);
+        if (errno == EEXIST) 
+        {
+            semid = semget(key, 1, 0600);
+        } else 
+        {
+            perror("KIEROWNIK POCIAGU: Blad utworzenia semafora");
+            exit(EXIT_FAILURE);
+        }
     }
     if (semctl(semid, 0, SETVAL, 1) == -1) 
     {
@@ -82,26 +91,39 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
             semaphore_wait(sem_passengers); // zablokowanie dostepu do danych pasazerow
-            int seat = data->free_seat++;
-            data->train_data[data->current_train][seat] = getpid(); // PID pasazera
-            data->passengers_waiting--;
-            printf("KIEROWNIK POCIAGU: Pasazer wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
+
+            if (data->passengers_waiting < 0 || data->passengers_with_bikes < 0) 
+            {
+                fprintf(stderr, "KIEROWNIK POCIAGU: Nieprawidlowy stan danych!\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (data->passengers_with_bikes > 0)
+            {
+                int seat = data->free_seat;
+                data->train_data[data->current_train][seat] = getpid(); // PID pasazera
+                data->free_seat++;
+                data->passengers_waiting--;
+                data->passengers_with_bikes--;
+                data->free_bike_spots--;
+                printf("KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
+            }
+            else if (data->passengers_waiting > 0)
+            {
+                int seat = data->free_seat;
+                data->train_data[data->current_train][seat] = getpid();
+                data->free_seat++;
+                data->passengers_waiting--;
+                printf("KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
+            }
             semaphore_signal(sem_passengers); // odblokowanie semafora pasazerow
         }
+
         if (data->free_seat == MAX_PASSENGERS)
         {
             printf("KIEROWNIK POCIAGU: Pociag %d jest pelny i gotowy do odjazdu.\n", data->current_train);
         }
         sleep(1);
-
-            //int has_bike = rand() % 2; // czy pasazer ma rower
-            /*if (has_bike) 
-            {
-                printf("ZARZADCA: Pasazer %d z rowerem wszedl do pociagu %d i zajal miejsce %d.\n",passenger_pid, data->current_train, data->free_seat);
-            } else 
-            {
-                printf("ZARZADCA: Pasazer %d wszedl do pociagu %d i zajal miejsce %d.\n",passenger_pid, data->current_train, data->free_seat);
-            }*/
     }
     printf("KIEROWNIK POCIAGU: Brak oczekujacych pasazerow\nKONIEC DZIALANIA.\n");
 }
@@ -118,7 +140,6 @@ void shared_memory_create()
         exit(EXIT_FAILURE);
     }
 }
-
 
 void shared_memory_address()
 {
