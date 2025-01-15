@@ -133,25 +133,41 @@ void shared_memory_detach()
 
 int main()
 {
+    printf("PASAZER: Rozpoczynam proces PID: %d\n", getpid());
     signal(SIGUSR1, handle_signal);
     srand(time(NULL));
+    pthread_t keyboard_thread; // deklaracja zmiennej watku
+    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
 
-    /*semid = semget(SEM_KEY, 1, 0600);
-    if (semid == -1)
+    shared_memory_create();
+    shared_memory_address();
+    //semaphore_create();
+
+    //semaphore_wait(semid);
+    //data->passengers_waiting = 0; // inicjalizacja liczby oczekujacych
+    //data->generating = 1;        // inicjalizacja flagi generowania
+    //semaphore_signal(semid);
+
+    while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
     {
-        perror("PASAZER: Blad dostepu do semafora");
-        exit(EXIT_FAILURE);
-    }*/
-
-    int has_bike = rand() % 2; // przypisanie czy pasazer ma rower
-
-    if (has_bike)
-    {
-        printf("PASAZER: Pasazer PID: %d z rowerem.\n", getpid());
+        //semaphore_wait(semid);
+        int passengers_to_generate = 5 + rand() % 6; // losowa liczba pasazerow 5-10
+        data->passengers_waiting ++; // zwiekszenie liczby oczekujacych pasazerow
+        int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
+        data->passengers_with_bikes++; // zwiekszenie liczby pasazerow z rowerami
+        printf("PASAZER: Wygenerowano %d nowych pasazerow.\n", passengers_to_generate);
+        printf("PASAZER: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
+        //semaphore_signal(semid);
+        sleep(3);
     }
-    else
-    {
-        printf("PASAZER: Pasazer PID: %d.\n", getpid());
-    }
+    //semaphore_wait(semid);
+    data->generating = 0; // flaga generowanie zakonczone
+    //semaphore_signal(semid);
+
+    pthread_join(keyboard_thread, NULL); // synchronizacja watku keyboard z glownym
+    shared_memory_detach();
+    //semaphore_remove();
+
+    printf("PASAZER: Proces zakonczony\n");
     return 0;
 }

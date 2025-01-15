@@ -182,20 +182,17 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    while (data->generating)
+    pid_t passenger_pid = fork();
+    if (passenger_pid < 0)
     {
-        pid_t passenger_pid = fork();
-        if (passenger_pid < 0)
-        {
-            perror("ZARZADCA: Blad fork dla passenger");
-            exit(EXIT_FAILURE);
-        }
-        if (passenger_pid == 0)
-        {
-            execl("./passenger", "./passenger", NULL);
-            perror("ZARZADCA: Blad execl pliku passenger");
-            exit(EXIT_FAILURE);
-        }
+        perror("ZARZADCA: Blad fork dla passenger");
+        exit(EXIT_FAILURE);
+    }
+    if (passenger_pid == 0) 
+    {
+        execl("./passenger", "./passenger", NULL);
+        perror("ZARZADCA: Blad execl pliku passenger");
+        exit(EXIT_FAILURE);
     }
 
     station_master(data);
@@ -205,6 +202,7 @@ int main()
     //semaphore_signal(semid);
 
     waitpid(train_manager_pid, NULL, 0); // czekanie na zakonczenie procesow potomnych
+    waitpid(passenger_pid, NULL, 0); 
 
     shared_memory_detach();
     //semaphore_remove();

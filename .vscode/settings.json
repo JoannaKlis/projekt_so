@@ -60,6 +60,7 @@
     "unistd.h": "c",
     "time.h": "c",
     "pthread.h": "c",
-    "signal.h": "c"
+    "signal.h": "c",
+    "errno.h": "c"
   }
 }
