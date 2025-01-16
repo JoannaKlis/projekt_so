@@ -85,5 +85,6 @@ int main()
     waitpid(passenger_pid, NULL, 0); 
 
     shared_memory_detach(data);
+    shared_memory_remove(memory);
     return 0;
 }

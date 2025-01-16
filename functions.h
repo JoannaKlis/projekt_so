@@ -114,4 +114,13 @@ void shared_memory_detach(Data *data)
     }
 }
 
+void shared_memory_remove(int memory) 
+{
+    if (shmctl(memory, IPC_RMID, NULL) == -1) 
+    {
+        perror("Blad usuwania segmentu pamieci dzielonej");
+        exit(EXIT_FAILURE);
+    }
+}
+
 #endif // FUNCTIONS_H
