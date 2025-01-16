@@ -1,80 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
-#include <errno.h>
-
-#define SHM_KEY 9876
-#define SEM_KEY 5912
-#define MAX_PASSENGERS 10
-#define SEM_KEY_PASSENGERS 5678
-#define SEM_KEY_BIKES 5679
-#define MAX_BIKES 5
-#define MAX_TRAINS 4
-
-typedef struct 
-{
-    int current_train; // aktualny pociag na stacji
-    int free_seat;     // numer 1 wolnego miejsca w pociagu
-    int train_data[MAX_TRAINS][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
-    int passengers_waiting; // liczba oczekujacych pasazerow
-    int generating; // flaga czy pasazerowie sa generowani
-    int free_bike_spots; // liczba wolnych miejsc na rowery
-    int passengers_with_bikes; // pasazerowie z rowerami
-} Data;
-
-void semaphore_wait(int semid) //blokowanie dostepu do semafora
-{
-    struct sembuf lock = {0, -1, 0};
-    if (semop(semid, &lock, 1) == -1) 
-    {
-        perror("KIEROWNIK POCIAGU: Blad blokowania semafora");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void semaphore_signal(int semid) //odblokowanie semafora
-{
-    struct sembuf unlock = {0, 1, 0};
-    if (semop(semid, &unlock, 1) == -1) 
-    {
-        perror("KIEROWNIK POCIAGU: Blad odblokowania semafora");
-        exit(EXIT_FAILURE);
-    }
-}
-
-int semaphore_create(key_t key)
-{
-int semid = semget(key, 1, IPC_CREAT | IPC_EXCL | 0600);
-    if (semid == -1) 
-    {
-        if (errno == EEXIST) 
-        {
-            semid = semget(key, 1, 0600);
-        } else 
-        {
-            perror("KIEROWNIK POCIAGU: Blad utworzenia semafora");
-            exit(EXIT_FAILURE);
-        }
-    }
-    if (semctl(semid, 0, SETVAL, 1) == -1) 
-    {
-        perror("KIEROWNIK POCIAGU: Blad inicjalizacji semafora");
-        exit(EXIT_FAILURE);
-    }
-    return semid;
-}
-
-void semaphore_remove(int semid)
-{
-    if (semctl(semid, 0, IPC_RMID) == -1) 
-    {
-        perror("KIEROWNIK POCIAGU: Blad usuwania semafora");
-        exit(EXIT_FAILURE);
-    }
-}
+#include "functions.h"
 
 void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
 {
@@ -128,48 +52,20 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
     printf("KIEROWNIK POCIAGU: Brak oczekujacych pasazerow\nKONIEC DZIALANIA.\n");
 }
 
-int memory, detach;
-Data *data = NULL; // globalny wskaxnik dla pamieci dzielonej
-
-void shared_memory_create()
-{
-    memory = shmget(SHM_KEY, sizeof(Data), 0600);
-    if (memory < 0)
-    {
-        perror("KIEROWNIK POCIAGU: Blad utworzenia segmentu pamieci dzielonej!");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void shared_memory_address()
-{
-    data = (Data *)shmat(memory, NULL, 0);
-    if (data == (void *)-1)
-    {
-        perror("KIEROWNIK POCIAGU: Blad dostepu do segmentu pamieci dzielonej!");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void shared_memory_detach()
-{
-    detach = shmdt(data);
-    if (detach == -1) 
-    {
-        perror("KIEROWNIK POCIAGU: Blad odlaczenia pamieci dzielonej");
-        exit(EXIT_FAILURE);
-    }
-}
-
 int main()
 {
-    shared_memory_create();
-    shared_memory_address();
+    int memory;
+    Data *data = NULL;
+
+    shared_memory_create(&memory);
+    shared_memory_address(memory, &data);
 
     int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
+    
     handle_passenger(data, sem_passengers);
 
-    shared_memory_detach();
+    shared_memory_detach(data);
     semaphore_remove(sem_passengers);
+    
     return 0;
 }
