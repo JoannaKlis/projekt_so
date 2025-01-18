@@ -18,9 +18,10 @@
 #define SEM_KEY 5912
 #define SEM_KEY_PASSENGERS 5678
 #define SEM_KEY_BIKES 5679
-#define MAX_PASSENGERS 10
+#define MAX_PASSENGERS 20
 #define MAX_BIKES 5
 #define MAX_TRAINS 4
+#define TRAIN_ARRIVAL_TIME 8
 
 typedef struct 
 {
@@ -31,7 +32,10 @@ typedef struct
     int generating; // flaga czy pasazerowie sa generowani
     int free_bike_spots; // liczba wolnych miejsc na rowery
     int passengers_with_bikes; // pasazerowie z rowerami
+    int semaphores_valid; // Flaga czy semafory są dostępne
 } Data;
+
+extern int sem_passengers;
 
 void semaphore_wait(int semid)
 {
@@ -120,6 +124,20 @@ void shared_memory_remove(int memory)
     {
         perror("Blad usuwania segmentu pamieci dzielonej");
         exit(EXIT_FAILURE);
+    }
+}
+
+int run_for_Ttime()
+{
+    time_t start_time = time(NULL);
+    time_t current_time;
+    while (1)
+    {
+        current_time = time(NULL);
+        if (current_time - start_time >= 10)
+        {
+            return 1;
+        }
     }
 }
 

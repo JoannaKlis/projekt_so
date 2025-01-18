@@ -10,29 +10,32 @@ void station_master(Data *data)
             data->generating = -1; // flaga - zarzadca konczy dzialanie
             break;
         }
+
         if (data->passengers_waiting > 0)
         {
-            printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
-            sleep(5); // czas na wsiadanie pasazerow
+            printf("ZARZADCA: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
+            data->passengers_waiting--;
 
-            if (data->free_seat == MAX_PASSENGERS) // tylko pelny pociag moze opuscic stacje
+            printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
+
+            if (run_for_Ttime()) // odjazd pociagu po T czasie
             {
                 printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
-                sleep(4); // czas na przyjazd do stacji 2
+                sleep(2);
 
                 printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
                 sleep(1);
 
                 printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
-                sleep(2);
+                sleep(TRAIN_ARRIVAL_TIME); // powrót na stacje glowna po Ti czasie
 
                 data->free_seat = 0; // reset wolnych miejsc po wysadzeniu
                 data->free_bike_spots = MAX_BIKES; //reset miejsc na rowery
             }
 
-            data->current_train = (data->current_train + 1) % MAX_TRAINS; // cykl z pociagami
-
             printf("ZARZADCA: Pociag %d wrocil na stacje 1.\n", data->current_train);
+
+            data->current_train = (data->current_train + 1) % MAX_TRAINS; // cykl z pociagami
         }
     }
 }
@@ -86,5 +89,6 @@ int main()
 
     shared_memory_detach(data);
     shared_memory_remove(memory);
+
     return 0;
 }

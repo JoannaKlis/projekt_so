@@ -1,5 +1,7 @@
 #include "functions.h"
 
+int sem_passengers;
+
 void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
 {
     printf("KIEROWNIK POCIAGU: Oczekiwanie na pociag: %d.\n", data->current_train);
@@ -59,6 +61,7 @@ int main()
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
+    sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
     int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
     

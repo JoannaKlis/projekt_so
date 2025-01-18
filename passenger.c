@@ -45,6 +45,8 @@ int main()
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
 
+    data->generating = 1; // flaga generowanie rozpoczete
+
     while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
     {
         int passengers_to_generate = 5 + rand() % 6; // losowa liczba pasazerow 5-10
@@ -52,7 +54,7 @@ int main()
         int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
         data->passengers_with_bikes++; // zwiekszenie liczby pasazerow z rowerami
         printf("PASAZER: Wygenerowano %d nowych pasazerow.\n", passengers_to_generate);
-        printf("PASAZER: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
+        //printf("PASAZER: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
         sleep(3);
     }
     data->generating = 0; // flaga generowanie zakonczone
