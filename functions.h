@@ -21,7 +21,8 @@
 #define MAX_PASSENGERS 20
 #define MAX_BIKES 5
 #define MAX_TRAINS 4
-#define TRAIN_ARRIVAL_TIME 8
+#define TRAIN_DEPARTURE_TIME 8
+#define TRAIN_ARRIVAL_TIME 4
 
 typedef struct 
 {
@@ -124,20 +125,6 @@ void shared_memory_remove(int memory)
     {
         perror("Blad usuwania segmentu pamieci dzielonej");
         exit(EXIT_FAILURE);
-    }
-}
-
-int run_for_Ttime()
-{
-    time_t start_time = time(NULL);
-    time_t current_time;
-    while (1)
-    {
-        current_time = time(NULL);
-        if (current_time - start_time >= 10)
-        {
-            return 1;
-        }
     }
 }
 

@@ -13,7 +13,7 @@ void *keyboard_signal(void *arg)
     struct termios oldt, newt; // deklaracja zmiennych terminalowych
     tcgetattr(STDIN_FILENO, &oldt); // pobranie obecnych ustawien terminala
     newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);  
+    newt.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newt); // modyfikacja ustawien terminala
 
     while (running) // petla na odczyt sygnalu
@@ -27,7 +27,7 @@ void *keyboard_signal(void *arg)
         }
     }
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // stare ustawienia
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // przywrocenie starych ustawien terminala
     return NULL; // koniec watku
 }
 
@@ -36,31 +36,41 @@ int main()
     int memory;
     Data *data = NULL;
 
-    printf("PASAZER: Rozpoczynam proces PID: %d\n", getpid());
-    signal(SIGUSR1, handle_signal);
-    srand(time(NULL));
-    pthread_t keyboard_thread; // deklaracja zmiennej watku
-    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
+    int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
+
+    pthread_t keyboard_thread; // deklaracja zmiennej watku
+    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
 
     data->generating = 1; // flaga generowanie rozpoczete
 
     while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
     {
+        semaphore_wait(sem_passengers); // zablokowanie dostepu do danych wspoldzielonych
+
+        if (data->free_seat == MAX_PASSENGERS) // blokada wsiadania jesli pociag odjedzie
+        {
+            semaphore_signal(sem_passengers);
+            sleep(1);
+            continue;
+        }
+
         int passengers_to_generate = 5 + rand() % 6; // losowa liczba pasazerow 5-10
-        data->passengers_waiting ++; // zwiekszenie liczby oczekujacych pasazerow
-        int passengers_with_bikes = rand() % (passengers_to_generate + 1); // pasazerowie z rowerami
-        data->passengers_with_bikes++; // zwiekszenie liczby pasazerow z rowerami
+        data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerów
+        data->passengers_with_bikes += rand() % (passengers_to_generate + 1); // dodanie pasazerów z rowerami
+
         printf("PASAZER: Wygenerowano %d nowych pasazerow.\n", passengers_to_generate);
-        //printf("PASAZER: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
+        semaphore_signal(sem_passengers); // odblokowanie danych wspoldzielonych
+
         sleep(3);
     }
     data->generating = 0; // flaga generowanie zakonczone
 
     pthread_join(keyboard_thread, NULL); // synchronizacja watku keyboard z glownym
     shared_memory_detach(data);
+    semaphore_remove(sem_passengers);
 
     printf("PASAZER: Proces zakonczony\n");
     return 0;
