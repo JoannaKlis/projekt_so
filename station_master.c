@@ -93,7 +93,6 @@ int main()
 
     shared_memory_detach(data);
     shared_memory_remove(memory);
-    semaphore_remove(sem_passengers);
 
     return 0;
 }

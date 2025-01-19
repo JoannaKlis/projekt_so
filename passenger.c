@@ -31,21 +31,8 @@ void *keyboard_signal(void *arg)
     return NULL; // koniec watku
 }
 
-int main()
+void passengers_generating(Data *data, int sem_passengers)
 {
-    int memory;
-    Data *data = NULL;
-
-    int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
-
-    shared_memory_create(&memory);
-    shared_memory_address(memory, &data);
-
-    pthread_t keyboard_thread; // deklaracja zmiennej watku
-    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
-
-    data->generating = 1; // flaga generowanie rozpoczete
-
     while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
     {
         semaphore_wait(sem_passengers); // zablokowanie dostepu do danych wspoldzielonych
@@ -67,10 +54,26 @@ int main()
         sleep(3);
     }
     data->generating = 0; // flaga generowanie zakonczone
+}
+
+int main()
+{
+    int memory;
+    Data *data = NULL;
+
+    shared_memory_create(&memory);
+    shared_memory_address(memory, &data);
+    int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
+
+    pthread_t keyboard_thread; // deklaracja zmiennej watku
+    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
+    
+    data->generating = 1; // flaga generowanie rozpoczete
+
+    passengers_generating(data, sem_passengers);
 
     pthread_join(keyboard_thread, NULL); // synchronizacja watku keyboard z glownym
     shared_memory_detach(data);
-    semaphore_remove(sem_passengers);
 
     printf("PASAZER: Proces zakonczony\n");
     return 0;

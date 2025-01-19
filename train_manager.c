@@ -1,16 +1,30 @@
 #include "functions.h"
 
-int sem_passengers;
-
 void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
 {
-    while (1)
-    {
-        semaphore_wait(sem_passengers);
+    printf("KIEROWNIK POCIAGU: Oczekiwanie na pociag: %d.\n", data->current_train);
 
-        if (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0) // sprawdzenie czy pociag jest na stacji i czy jest gotowy na przyjecie pasazerow
+    int train_full_reported = 0; // flaga informujaca, czy komunikat o pelnym pociagu zostal wyswietlony
+
+    while (data->passengers_waiting == 0 && data->generating) // oczekiwanie na wygenerowanie pasazerow
+    {
+        sleep(1);
+    }
+    printf("KIEROWNIK POCIAGU: Rozpoczynam zarzadzanie pasazerami dla pociagu %d.\n", data->current_train);
+
+    while (data->generating != -1) // flaga na sprawdzenie zakonczenia dzialania zarzadcy
+    {
+        while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
         {
-            if (data->passengers_with_bikes > 0 && data->free_bike_spots > 0)
+            semaphore_wait(sem_passengers); // zablokowanie dostepu do danych pasazerow
+
+            if (data->passengers_waiting < 0 || data->passengers_with_bikes < 0) 
+            {
+                fprintf(stderr, "KIEROWNIK POCIAGU: Nieprawidlowy stan danych!\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (data->passengers_with_bikes > 0)
             {
                 int seat = data->free_seat;
                 data->train_data[data->current_train][seat] = getpid();
@@ -19,6 +33,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
                 data->passengers_with_bikes--;
                 data->free_bike_spots--;
                 printf("KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
+                usleep(500000); //0.5s
             }
             else if (data->passengers_waiting > 0)
             {
@@ -28,19 +43,23 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
                 data->passengers_waiting--;
                 printf("KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
             }
+            semaphore_signal(sem_passengers); // odblokowanie semafora pasazerow
         }
 
-        if (data->free_seat == MAX_PASSENGERS || data->generating == -1)
+        if (data->free_seat == MAX_PASSENGERS && !train_full_reported) // pociag palny lub jeszcze nie zostal wyswietlony
         {
-            semaphore_signal(sem_passengers);
-            sleep(1); // oczekiwanie na nowy pociag
-            continue;
+            printf("KIEROWNIK POCIAGU: Pociag %d jest gotowy do odjazdu.\n", data->current_train);
+            train_full_reported = 1; // ustawienie flagi, aby komunikat nie pojawiaa sie ponownie
         }
 
-        semaphore_signal(sem_passengers);
+        if (data->free_seat < MAX_PASSENGERS) // reset flagi przy przejsciu do kolejnego pociagu
+        {
+            train_full_reported = 0;
+        }
+
         sleep(1);
     }
-
+    printf("KIEROWNIK POCIAGU: Brak oczekujacych pasazerow\nKONIEC DZIALANIA.\n");
 }
 
 int main()
@@ -50,12 +69,13 @@ int main()
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
-    sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
+    int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
+    
     handle_passenger(data, sem_passengers);
 
     shared_memory_detach(data);
     semaphore_remove(sem_passengers);
-
+    
     return 0;
 }

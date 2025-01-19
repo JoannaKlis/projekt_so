@@ -21,7 +21,7 @@
 #define MAX_PASSENGERS 20
 #define MAX_BIKES 5
 #define MAX_TRAINS 4
-#define TRAIN_DEPARTURE_TIME 8
+#define TRAIN_DEPARTURE_TIME 12
 #define TRAIN_ARRIVAL_TIME 4
 
 typedef struct 
