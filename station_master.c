@@ -27,16 +27,16 @@ void station_master(Data *data, int sem_passengers)
        if (data->passengers_waiting > 0)
         {
             printf("ZARZADCA: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
-            printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train);
+            printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train +1);
 
             sleep(TRAIN_DEPARTURE_TIME); // czas do odjazdu pociągu
 
-            printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train);
+            printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train +1);
 
             data->free_seat = MAX_PASSENGERS; // zablokowanie dalszego wsiadania
             sleep(TRAIN_ARRIVAL_TIME); // podroz na stacje 2
 
-            printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train);
+            printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train +1);
             printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
 
             sleep(1); // czas wysiadania
@@ -44,7 +44,7 @@ void station_master(Data *data, int sem_passengers)
             data->free_seat = 0; // reset miejsc
             data->free_bike_spots = MAX_BIKES; // reset miejsc na rowery
 
-            printf("ZARZADCA: Pociag %d wrocil na stacje 1.\n", data->current_train);
+            printf("ZARZADCA: Pociag %d wrocil na stacje 1.\n", data->current_train +1);
 
             data->current_train = (data->current_train + 1) % MAX_TRAINS; // nastepny pociag
         }

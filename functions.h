@@ -26,14 +26,13 @@
 
 typedef struct 
 {
-    int current_train; // aktualny pociag na stacji
-    int free_seat;     // numer 1 wolnego miejsca w pociagu
-    int train_data[MAX_TRAINS][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
-    int passengers_waiting; // liczba oczekujacych pasazerow
-    int generating; // flaga czy pasazerowie sa generowani
-    int free_bike_spots; // liczba wolnych miejsc na rowery
-    int passengers_with_bikes; // pasazerowie z rowerami
-    int semaphores_valid; // Flaga czy semafory są dostępne
+    short current_train; // aktualny pociag na stacji
+    short free_seat;     // numer 1 wolnego miejsca w pociagu
+    short train_data[MAX_TRAINS][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
+    short passengers_waiting; // liczba oczekujacych pasazerow
+    short generating; // flaga czy pasazerowie sa generowani
+    short free_bike_spots; // liczba wolnych miejsc na rowery
+    short passengers_with_bikes; // pasazerowie z rowerami
 } Data;
 
 extern int sem_passengers;

@@ -10,8 +10,6 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
     {
         sleep(1);
     }
-    printf("KIEROWNIK POCIAGU: Rozpoczynam zarzadzanie pasazerami dla pociagu %d.\n", data->current_train);
-
     while (data->generating != -1) // flaga na sprawdzenie zakonczenia dzialania zarzadcy
     {
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
@@ -33,8 +31,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
                 data->passengers_waiting--;
                 data->passengers_with_bikes--;
                 data->free_bike_spots--;
-                printf("KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
-                usleep(500000); //0.5s
+                printf("KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train +1, seat +1);
             }
             else if (data->passengers_waiting > 0)
             {
@@ -42,7 +39,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
                 data->train_data[data->current_train][seat] = getpid();
                 data->free_seat++;
                 data->passengers_waiting--;
-                printf("KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train, seat);
+                printf("KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train +1, seat +1);
             }
             semaphore_signal(sem_passengers); // odblokowanie semafora pasazerow
         }
