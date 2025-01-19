@@ -18,11 +18,12 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
         {
             semaphore_wait(sem_passengers); // zablokowanie dostepu do danych pasazerow
 
-            if (data->passengers_waiting < 0 || data->passengers_with_bikes < 0) 
-            {
-                fprintf(stderr, "KIEROWNIK POCIAGU: Nieprawidlowy stan danych!\n");
-                exit(EXIT_FAILURE);
-            }
+            if (data->passengers_waiting < 0 || data->passengers_with_bikes < 0 || data->passengers_with_bikes > data->passengers_waiting)
+                {
+                    fprintf(stderr, "KIEROWNIK POCIAGU: Nieprawidlowe dane: liczba oczekujacych pasazerow: %d, z rowerami: %d\n",
+                    data->passengers_waiting, data->passengers_with_bikes);
+                    exit(EXIT_FAILURE);
+                }
 
             if (data->passengers_with_bikes > 0)
             {

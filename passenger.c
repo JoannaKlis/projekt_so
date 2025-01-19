@@ -42,6 +42,22 @@ void *keyboard_signal(void *arg)
     return NULL;
 }
 
+void create_and_start_keyboard_thread(pthread_t *thread)
+{
+    if (pthread_create(thread, NULL, keyboard_signal, NULL) != 0)
+    {
+        handle_error("PASAZER: Blad utworzenia watku");
+    }
+}
+
+void wait_for_keyboard_thread(pthread_t *thread)
+{
+    if (pthread_join(*thread, NULL) != 0)
+    {
+        handle_error("PASAZER: Blad synchronizacji watku");
+    }
+}
+
 void passengers_generating(Data *data, int sem_passengers)
 {
     while (running && data->passengers_waiting <= MAX_PASSENGERS * MAX_TRAINS)
@@ -77,14 +93,13 @@ int main()
     int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
     pthread_t keyboard_thread; // deklaracja zmiennej watku
-    pthread_create(&keyboard_thread, NULL, keyboard_signal, NULL); // utworzenie nowego watku
+    create_and_start_keyboard_thread(&keyboard_thread);
     
     data->generating = 1; // flaga generowanie rozpoczete
 
     passengers_generating(data, sem_passengers);
 
-    pthread_join(keyboard_thread, NULL); // synchronizacja watku keyboard z glownym
-    shared_memory_detach(data);
+    wait_for_keyboard_thread(&keyboard_thread);
 
     printf("PASAZER: Proces zakonczony\n");
     return 0;

@@ -1,5 +1,15 @@
 #include "functions.h"
 
+void wait_for_child_process(pid_t pid, const char *process_name)
+{
+    if (waitpid(pid, NULL, 0) == -1)
+    {
+        char error_message[256];
+        snprintf(error_message, sizeof(error_message), "ZARZADCA: Blad podczas oczekiwania na %s", process_name);
+        handle_error(error_message);
+    }
+}
+
 void station_master(Data *data, int sem_passengers)
 {
     while (1)  // dzialanie zarzadcy
@@ -63,37 +73,33 @@ int main()
     pid_t train_manager_pid = fork();
     if (train_manager_pid < 0) // blad w fork
     {
-        perror("ZARZADCA: Blad fork dla train_manager");
-        exit(EXIT_FAILURE);
+        handle_error("ZARZADCA: Blad fork dla train_manager");
     }
     if (train_manager_pid == 0) // kod w procesie potomnym
     {
         if (execl("./train_manager", "./train_manager", NULL) == -1) // sprawdzenie bledu execl
         {
-            perror("ZARZADCA: Blad execl pliku train_manager");
-            exit(EXIT_FAILURE);
+            handle_error("ZARZADCA: Blad execl pliku train_manager");
         }
     }
 
     pid_t passenger_pid = fork();
     if (passenger_pid < 0) // blad w fork
     {
-        perror("ZARZADCA: Blad fork dla passenger");
-        exit(EXIT_FAILURE);
+        handle_error("ZARZADCA: Blad fork dla passenger");
     }
     if (passenger_pid == 0) // kod w procesie potomnym
     {
         if (execl("./passenger", "./passenger", NULL) == -1) // sprawdzenie bledu execl
         {
-            perror("ZARZADCA: Blad execl pliku passenger");
-            exit(EXIT_FAILURE);
+            handle_error("ZARZADCA: Blad execl pliku passenger");
         }
     }
 
     station_master(data, sem_passengers);
 
-    waitpid(train_manager_pid, NULL, 0); // czekanie na zakonczenie procesow potomnych
-    waitpid(passenger_pid, NULL, 0);
+    wait_for_child_process(train_manager_pid, "train_manager");
+    wait_for_child_process(passenger_pid, "passenger");
 
     shared_memory_detach(data);
     shared_memory_remove(memory);

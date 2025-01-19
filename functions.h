@@ -38,13 +38,18 @@ typedef struct
 
 extern int sem_passengers;
 
+void handle_error(const char *message)
+{
+    perror(message);
+    exit(EXIT_FAILURE);
+}
+
 void semaphore_wait(int semid)
 {
     struct sembuf lock = {0, -1, 0};
     if (semop(semid, &lock, 1) == -1)
     {
-        perror("Blad blokowania semafora");
-        exit(EXIT_FAILURE);
+        handle_error("Blad blokowania semafora");
     }
 }
 
@@ -53,8 +58,7 @@ void semaphore_signal(int semid)
     struct sembuf unlock = {0, 1, 0};
     if (semop(semid, &unlock, 1) == -1)
     {
-        perror("Blad odblokowania semafora");
-        exit(EXIT_FAILURE);
+        handle_error("Blad odblokowania semafora");
     }
 }
 
@@ -69,14 +73,12 @@ int semaphore_create(key_t key)
         }
         else
         {
-            perror("Blad utworzenia semafora");
-            exit(EXIT_FAILURE);
+            handle_error("Blad utworzenia semafora");
         }
     }
     if (semctl(semid, 0, SETVAL, 1) == -1)
     {
-        perror("Blad inicjalizacji semafora");
-        exit(EXIT_FAILURE);
+        handle_error("Blad inicjalizacji semafora");
     }
     return semid;
 }
@@ -85,8 +87,7 @@ void semaphore_remove(int semid)
 {
     if (semctl(semid, 0, IPC_RMID) == -1)
     {
-        perror("Blad usuwania semafora");
-        exit(EXIT_FAILURE);
+        handle_error("Blad usuwania semafora");
     }
 }
 
@@ -95,8 +96,7 @@ void shared_memory_create(int *memory)
     *memory = shmget(SHM_KEY, sizeof(Data), IPC_CREAT | 0600);
     if (*memory < 0)
     {
-        perror("Blad utworzenia segmentu pamieci dzielonej");
-        exit(EXIT_FAILURE);
+        handle_error("Blad utworzenia segmentu pamieci dzielonej");
     }
 }
 
@@ -105,8 +105,7 @@ void shared_memory_address(int memory, Data **data)
     *data = (Data *)shmat(memory, NULL, 0);
     if (*data == (void *)-1)
     {
-        perror("Blad dostepu do segmentu pamieci dzielonej");
-        exit(EXIT_FAILURE);
+        handle_error("Blad dostepu do segmentu pamieci dzielonej");
     }
 }
 
@@ -114,8 +113,7 @@ void shared_memory_detach(Data *data)
 {
     if (shmdt(data) == -1)
     {
-        perror("Blad odlaczenia pamieci dzielonej");
-        exit(EXIT_FAILURE);
+        handle_error("Blad odlaczenia pamieci dzielonej");
     }
 }
 
@@ -123,8 +121,7 @@ void shared_memory_remove(int memory)
 {
     if (shmctl(memory, IPC_RMID, NULL) == -1) 
     {
-        perror("Blad usuwania segmentu pamieci dzielonej");
-        exit(EXIT_FAILURE);
+        handle_error("Blad usuwania segmentu pamieci dzielonej");
     }
 }
 
