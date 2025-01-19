@@ -13,6 +13,8 @@
 #include <time.h>
 #include <pthread.h>
 #include <termios.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #define SHM_KEY 9876
 #define SEM_KEY 5912
@@ -41,6 +43,35 @@ void handle_error(const char *message)
 {
     perror(message);
     exit(EXIT_FAILURE);
+}
+
+size_t calculate_directory_size(const char *path)
+{
+    size_t total_size = 0;
+    struct stat st;
+    struct dirent *entry;
+
+    DIR *dir = opendir(path);
+    if (!dir)
+    {
+        perror("Blad otwierania katalogu");
+        return 0;
+    }
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        char full_path[PATH_MAX];
+        snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+
+        if (stat(full_path, &st) == 0)
+        {
+            if (S_ISREG(st.st_mode)) // tylko pliki regularne
+                total_size += st.st_size;
+        }
+    }
+
+    closedir(dir);
+    return total_size;
 }
 
 void semaphore_wait(int semid)

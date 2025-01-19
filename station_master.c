@@ -57,6 +57,22 @@ int main()
     int memory;
     Data *data = NULL;
 
+    size_t dir_size = calculate_directory_size("."); //obliczanie rozmiaru katalogu
+    size_t shared_memory_size = sizeof(Data); // obliczanie rozmairu pamieci dzielonej
+
+    if (dir_size == 0)
+    {
+        fprintf(stderr, "ZARZADCA: Nie mozna obliczyc rozmiaru katalogu.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (shared_memory_size > dir_size / 10)
+    {
+        fprintf(stderr, "ZARZADCA: Rozmiar pamieci dzielonej (%zu B) przekracza 10%% rozmiaru katalogu (%zu B).\n",
+                shared_memory_size, dir_size);
+        exit(EXIT_FAILURE);
+    }
+
     srand(time(NULL));
 
     shared_memory_create(&memory);
