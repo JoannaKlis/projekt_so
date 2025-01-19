@@ -16,17 +16,29 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#define SHM_KEY 9876
-#define SEM_KEY 5912
-#define SEM_KEY_PASSENGERS 5678
-#define SEM_KEY_BIKES 5679
-#define MAX_PASSENGERS 20
-#define MAX_BIKES 5
-#define MAX_TRAINS 4
-#define TRAIN_DEPARTURE_TIME 12
-#define TRAIN_ARRIVAL_TIME 4
+// unikalne klucze IPC
+#define SHM_KEY 0x1A2B3C4D // klucz pamieci wspoldzielonej
+#define SEM_KEY_PASSENGERS 0x2B3C4D5E // klucz semafora pasazerow
+#define SEM_KEY_BIKES 0x3C4D5E6F // klucz semafora rowerow
 
-typedef struct 
+// limity i konfiguracje systemu
+#define MAX_PASSENGERS 20    // maksymalna liczba pasazerow w pociagu
+#define MAX_BIKES 5          // maksymalna liczba rowerow w pociagu
+#define MAX_TRAINS 4         // liczba pociagow
+#define TRAIN_DEPARTURE_TIME 12 // czas odjazdu pociagu (w sekundach)
+#define TRAIN_ARRIVAL_TIME 4    // zzas przyjazdu pociagu na nastepna stacje (w sekundach)
+
+// kolorowanie terminala
+#define COLOR_RESET "\033[0m"
+#define COLOR_RED "\033[31m"
+#define COLOR_GREEN "\033[32m"
+#define COLOR_YELLOW "\033[33m"
+#define COLOR_ORANGE "\033[38;2;255;165;0m"
+#define COLOR_BLUE "\033[34m"
+#define COLOR_MAGENTA "\033[35m"
+#define COLOR_CYAN "\033[36m"
+
+typedef struct // struktura przechowujaca dane wspoldzielone
 {
     short current_train; // aktualny pociag na stacji
     short free_seat;     // numer 1 wolnego miejsca w pociagu
@@ -37,36 +49,37 @@ typedef struct
     short passengers_with_bikes; // pasazerowie z rowerami
 } Data;
 
-extern int sem_passengers;
+extern int sem_passengers; // zmienna globalna dla semaforow
 
-void handle_error(const char *message)
+void handle_error(const char *message) // funkcja obslugi bledow
 {
-    perror(message);
+    fprintf(stderr, COLOR_RED "%s" COLOR_RESET "\n", message);
+    perror("");
     exit(EXIT_FAILURE);
 }
 
-size_t calculate_directory_size(const char *path)
+size_t calculate_directory_size(const char *path) // obliczanie calkowitego rozmiaru katalogu
 {
     size_t total_size = 0;
-    struct stat st;
-    struct dirent *entry;
+    struct stat st; // struktura przechowujaca informacje o pliku 
+    struct dirent *entry; // struktura opisujaca wpis w katlogu
 
-    DIR *dir = opendir(path);
+    DIR *dir = opendir(path); // otworzenie katalogu
     if (!dir)
     {
-        perror("Blad otwierania katalogu");
+        fprintf(stderr, COLOR_RED "Blad otwierania katalogu" COLOR_RESET "\n");
         return 0;
     }
 
-    while ((entry = readdir(dir)) != NULL)
+    while ((entry = readdir(dir)) != NULL) // iteracja przez wszystkie pliki w katalogu
     {
-        char full_path[PATH_MAX];
+        char full_path[PATH_MAX]; // sciezka do pliku
         snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
 
-        if (stat(full_path, &st) == 0)
+        if (stat(full_path, &st) == 0) // pobranie informacji o pliku
         {
-            if (S_ISREG(st.st_mode)) // tylko pliki regularne
-                total_size += st.st_size;
+            if (S_ISREG(st.st_mode)) // tylko pliki regularne sa liczone
+                total_size += st.st_size; // dodanie rozmiaru pliku do calkowitego rozmiaru
         }
     }
 
@@ -74,30 +87,30 @@ size_t calculate_directory_size(const char *path)
     return total_size;
 }
 
-void semaphore_wait(int semid)
+void semaphore_wait(int semid) // funkcja blokujaca semafor
 {
-    struct sembuf lock = {0, -1, 0};
-    if (semop(semid, &lock, 1) == -1)
+    struct sembuf lock = {0, -1, 0}; // operacja zmniejszenia semafora
+    if (semop(semid, &lock, 1) == -1) // wykonanie operacji na semaforze
     {
         handle_error("Blad blokowania semafora");
     }
 }
 
-void semaphore_signal(int semid)
+void semaphore_signal(int semid) // funkcja odblokowujaca emafor
 {
-    struct sembuf unlock = {0, 1, 0};
-    if (semop(semid, &unlock, 1) == -1)
+    struct sembuf unlock = {0, 1, 0}; // operacja zwiekszenia semafora
+    if (semop(semid, &unlock, 1) == -1) // wykonanie operacji na semaforze
     {
         handle_error("Blad odblokowania semafora");
     }
 }
 
-int semaphore_create(key_t key)
+int semaphore_create(key_t key) // funkcja tworzaca semafor
 {
-    int semid = semget(key, 1, IPC_CREAT | IPC_EXCL | 0600);
+    int semid = semget(key, 1, IPC_CREAT | IPC_EXCL | 0600); // tworzenie nowego semafora
     if (semid == -1)
     {
-        if (errno == EEXIST)
+        if (errno == EEXIST) // jesli juz istnieje to otwiera go
         {
             semid = semget(key, 1, 0600);
         }
@@ -106,14 +119,14 @@ int semaphore_create(key_t key)
             handle_error("Blad utworzenia semafora");
         }
     }
-    if (semctl(semid, 0, SETVAL, 1) == -1)
+    if (semctl(semid, 0, SETVAL, 1) == -1) // inicjalizacja semafora wartoscia 1
     {
         handle_error("Blad inicjalizacji semafora");
     }
-    return semid;
+    return semid; // zwrocenie id semafora
 }
 
-void semaphore_remove(int semid)
+void semaphore_remove(int semid) // funkcja usuwania semafora
 {
     if (semctl(semid, 0, IPC_RMID) == -1)
     {
@@ -121,7 +134,7 @@ void semaphore_remove(int semid)
     }
 }
 
-void shared_memory_create(int *memory)
+void shared_memory_create(int *memory) // funkcja tworzaca segment pamieci wspoldzielonej
 {
     *memory = shmget(SHM_KEY, sizeof(Data), IPC_CREAT | 0600);
     if (*memory < 0)
@@ -130,7 +143,7 @@ void shared_memory_create(int *memory)
     }
 }
 
-void shared_memory_address(int memory, Data **data)
+void shared_memory_address(int memory, Data **data) // funkcja uzyskujaca adres segmentu pamieci wspoldzielonej
 {
     *data = (Data *)shmat(memory, NULL, 0);
     if (*data == (void *)-1)
@@ -139,7 +152,7 @@ void shared_memory_address(int memory, Data **data)
     }
 }
 
-void shared_memory_detach(Data *data)
+void shared_memory_detach(Data *data) // funkcja odlaczajaca segment pamieci wspoldzielonej
 {
     if (shmdt(data) == -1)
     {
@@ -147,7 +160,7 @@ void shared_memory_detach(Data *data)
     }
 }
 
-void shared_memory_remove(int memory) 
+void shared_memory_remove(int memory) // funkcja usuwajaca segment pamieci wspoldzielonej
 {
     if (shmctl(memory, IPC_RMID, NULL) == -1) 
     {

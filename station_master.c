@@ -1,54 +1,54 @@
 #include "functions.h"
 
-void wait_for_child_process(pid_t pid, const char *process_name)
+void wait_for_child_process(pid_t pid, const char *process_name) // oczekiwanie na zakonczenie procesu potomnego
 {
     if (waitpid(pid, NULL, 0) == -1)
     {
         char error_message[256];
-        snprintf(error_message, sizeof(error_message), "ZARZADCA: Blad podczas oczekiwania na %s", process_name);
+        snprintf(error_message, sizeof(error_message), COLOR_RED "ZARZADCA: Blad podczas oczekiwania na %s" COLOR_RESET, process_name);
         handle_error(error_message);
     }
 }
 
-void station_master(Data *data, int sem_passengers)
+void station_master(Data *data, int sem_passengers) // zarzadzanie odjazdami pociagow
 {
     while (1)  // dzialanie zarzadcy
     {
-        semaphore_wait(sem_passengers); // blokada podczas zarzadzania pasazerami
+        semaphore_wait(sem_passengers); // zablokowanie dostepu do danych wspoldzielonych
 
-        if (data->passengers_waiting == 0 && !data->generating) 
+        if (data->passengers_waiting == 0 && !data->generating) // sprawdzenie, czy brak oczekujacych pasazerow oraz czy zakonczono generowanie
         {
-            printf("ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n");
+            printf(COLOR_BLUE "ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n" COLOR_RESET);
             data->generating = -1; // flaga - zarzadca konczy dzialanie
             semaphore_signal(sem_passengers);
             break;
         }
 
-       if (data->passengers_waiting > 0)
+       if (data->passengers_waiting > 0) // gdy sa oczekujacy pasazerowie
         {
-            printf("ZARZADCA: Liczba wszystkich oczekujacych: %d.\n", data->passengers_waiting);
-            printf("ZARZADCA: Pociag %d przyjechal na stacje 1.\n", data->current_train +1);
+            printf(COLOR_CYAN "ZARZADCA: Liczba wszystkich oczekujacych: %d.\n" COLOR_RESET, data->passengers_waiting);
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d przyjechal na stacje 1.\n" COLOR_RESET, data->current_train +1);
 
             sleep(TRAIN_DEPARTURE_TIME); // czas do odjazdu pociągu
 
-            printf("ZARZADCA: Pociag %d odjezdza ze stacji 1.\n", data->current_train +1);
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d odjezdza ze stacji 1.\n" COLOR_RESET, data->current_train +1);
 
-            data->free_seat = MAX_PASSENGERS; // zablokowanie dalszego wsiadania
+            data->free_seat = MAX_PASSENGERS; // oznaczenie pociagu jako pelny
             sleep(TRAIN_ARRIVAL_TIME); // podroz na stacje 2
 
-            printf("ZARZADCA: Pociag %d dotarl na stacje 2.\n", data->current_train +1);
-            printf("ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n");
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d dotarl na stacje 2.\n" COLOR_RESET, data->current_train +1);
+            printf(COLOR_CYAN "ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n" COLOR_RESET);
 
             sleep(1); // czas wysiadania
 
-            data->free_seat = 0; // reset miejsc
+            data->free_seat = 0; // reset wolnych miejsc
             data->free_bike_spots = MAX_BIKES; // reset miejsc na rowery
 
-            printf("ZARZADCA: Pociag %d wrocil na stacje 1.\n", data->current_train +1);
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d wrocil na stacje 1.\n" COLOR_RESET, data->current_train +1);
 
             data->current_train = (data->current_train + 1) % MAX_TRAINS; // nastepny pociag
         }
-        semaphore_signal(sem_passengers);
+        semaphore_signal(sem_passengers); // zwolnienie semafora
     }
 }
 
@@ -60,20 +60,17 @@ int main()
     size_t dir_size = calculate_directory_size("."); //obliczanie rozmiaru katalogu
     size_t shared_memory_size = sizeof(Data); // obliczanie rozmairu pamieci dzielonej
 
-    if (dir_size == 0)
+    if (dir_size == 0) // obsluga bledu rozmiaru katalogu
     {
-        fprintf(stderr, "ZARZADCA: Nie mozna obliczyc rozmiaru katalogu.\n");
+        fprintf(stderr, COLOR_RED "ZARZADCA: Nie mozna obliczyc rozmiaru katalogu.\n" COLOR_RESET);
         exit(EXIT_FAILURE);
     }
 
-    if (shared_memory_size > dir_size / 10)
+    if (shared_memory_size > dir_size / 10) // sprawdzenie czy pamiec dzielona nie przekracza limitu
     {
-        fprintf(stderr, "ZARZADCA: Rozmiar pamieci dzielonej (%zu B) przekracza 10%% rozmiaru katalogu (%zu B).\n",
-                shared_memory_size, dir_size);
+        fprintf(stderr, COLOR_RED "ZARZADCA: Rozmiar pamieci dzielonej (%zu B) przekracza 10%% rozmiaru katalogu (%zu B).\n" COLOR_RESET, shared_memory_size, dir_size);
         exit(EXIT_FAILURE);
     }
-
-    srand(time(NULL));
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
@@ -86,7 +83,7 @@ int main()
     data->passengers_waiting = 0; //ustawienie poczatkowej liczby czekajacych pasazerow
     data->generating = 1; // pasazerowie sa generowani
 
-    pid_t train_manager_pid = fork();
+    pid_t train_manager_pid = fork(); // uruchomienie procesu kierownika pociagu
     if (train_manager_pid < 0) // blad w fork
     {
         handle_error("ZARZADCA: Blad fork dla train_manager");
@@ -99,7 +96,7 @@ int main()
         }
     }
 
-    pid_t passenger_pid = fork();
+    pid_t passenger_pid = fork(); // uruchomieniu procesu generowania pasazerow
     if (passenger_pid < 0) // blad w fork
     {
         handle_error("ZARZADCA: Blad fork dla passenger");

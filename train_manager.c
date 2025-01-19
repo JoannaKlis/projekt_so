@@ -2,7 +2,7 @@
 
 void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
 {
-    printf("KIEROWNIK POCIAGU: Oczekiwanie na pociag: %d.\n", data->current_train);
+    printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Oczekiwanie na pociag: %d.\n" COLOR_RESET, data->current_train);
 
     int train_full_reported = 0; // flaga informujaca, czy komunikat o pelnym pociagu zostal wyswietlony
 
@@ -12,41 +12,40 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
     }
     while (data->generating != -1) // flaga na sprawdzenie zakonczenia dzialania zarzadcy
     {
-        while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0)
+        while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0) // wiadanie do pociagu
         {
-            semaphore_wait(sem_passengers); // zablokowanie dostepu do danych pasazerow
+            semaphore_wait(sem_passengers); // zablokowanie dostepu do danych wspoldzielonych
 
-            if (data->passengers_waiting < 0 || data->passengers_with_bikes < 0 || data->passengers_with_bikes > data->passengers_waiting)
+            if (data->passengers_waiting < 0 || data->passengers_with_bikes < 0 || data->passengers_with_bikes > data->passengers_waiting) // walidacja spojnosci danych o pasazerach
                 {
-                    fprintf(stderr, "KIEROWNIK POCIAGU: Nieprawidlowe dane: liczba oczekujacych pasazerow: %d, z rowerami: %d\n",
-                    data->passengers_waiting, data->passengers_with_bikes);
-                    exit(EXIT_FAILURE);
+                    fprintf(stderr, COLOR_RED "KIEROWNIK POCIAGU: Nieprawidlowe dane: liczba oczekujacych pasazerow: %d, z rowerami: %d\n" COLOR_RESET, data->passengers_waiting, data->passengers_with_bikes);
+                    exit(EXIT_FAILURE); // koniec programu gdy dane sa nieprawidlowe
                 }
 
-            if (data->passengers_with_bikes > 0)
+            if (data->passengers_with_bikes > 0) // obsluga pasazerow z rowerami
+            {
+                int seat = data->free_seat; // id wolnego miejsca w pociagu
+                data->train_data[data->current_train][seat] = getpid(); // przypisanie pasazera do miejsca
+                data->free_seat++; // zwiekszenie liczby zajetych miejsc
+                data->passengers_waiting--; // zmniejszenie liczby oczekujacych pasazerow
+                data->passengers_with_bikes--; // zmniejszenie liczby pasazrow z rowerami
+                data->free_bike_spots--; // zmniejszenie liczby wolnych miejsc na rowery
+                printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->current_train +1, seat +1);
+            }
+            else if (data->passengers_waiting > 0) // obluga pasazerow bez rowerow
             {
                 int seat = data->free_seat;
                 data->train_data[data->current_train][seat] = getpid();
                 data->free_seat++;
                 data->passengers_waiting--;
-                data->passengers_with_bikes--;
-                data->free_bike_spots--;
-                printf("KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train +1, seat +1);
+                printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->current_train +1, seat +1);
             }
-            else if (data->passengers_waiting > 0)
-            {
-                int seat = data->free_seat;
-                data->train_data[data->current_train][seat] = getpid();
-                data->free_seat++;
-                data->passengers_waiting--;
-                printf("KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n", data->current_train +1, seat +1);
-            }
-            semaphore_signal(sem_passengers); // odblokowanie semafora pasazerow
+            semaphore_signal(sem_passengers); // odblokowanie dostepu do danych wspoldzielonych
         }
 
         if (data->free_seat == MAX_PASSENGERS && !train_full_reported) // pociag palny lub jeszcze nie zostal wyswietlony
         {
-            printf("KIEROWNIK POCIAGU: Pociag %d jest gotowy do odjazdu.\n", data->current_train);
+            printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pociag %d jest gotowy do odjazdu.\n" COLOR_RESET, data->current_train);
             train_full_reported = 1; // ustawienie flagi, aby komunikat nie pojawiaa sie ponownie
         }
 
@@ -57,7 +56,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
 
         sleep(1);
     }
-    printf("KIEROWNIK POCIAGU: Brak oczekujacych pasazerow\nKONIEC DZIALANIA.\n");
+    printf(COLOR_GREEN "KIEROWNIK POCIAGU: Brak oczekujacych pasazerow\nKONIEC DZIALANIA.\n" COLOR_RESET);
 }
 
 int main()
