@@ -10,11 +10,19 @@ void handle_signal(int signal) // sygnal na przerwanie dzialania
 
 void *keyboard_signal(void *arg)
 {
-    struct termios oldt, newt; // deklaracja zmiennych terminalowych
-    tcgetattr(STDIN_FILENO, &oldt); // pobranie obecnych ustawien terminala
+    struct termios oldt, newt;
+    if (tcgetattr(STDIN_FILENO, &oldt) == -1) // sprawdzenie bledu tcgetattr
+    {
+        perror("PASAZER: Blad tcgetattr");
+        return NULL;
+    }
     newt = oldt;
     newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt); // modyfikacja ustawien terminala
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) == -1) // sprawdzenie bledu tcsetattr
+    {
+        perror("PASAZER: Blad tcsetattr");
+        return NULL;
+    }
 
     while (running) // petla na odczyt sygnalu
     {
@@ -27,8 +35,11 @@ void *keyboard_signal(void *arg)
         }
     }
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // przywrocenie starych ustawien terminala
-    return NULL; // koniec watku
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &oldt) == -1) // przywrocenie starych ustawien terminala
+    {
+        perror("PASAZER: Blad przywracania tcsetattr");
+    }
+    return NULL;
 }
 
 void passengers_generating(Data *data, int sem_passengers)

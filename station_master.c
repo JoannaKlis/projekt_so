@@ -61,29 +61,33 @@ int main()
     data->generating = 1; // pasazerowie sa generowani
 
     pid_t train_manager_pid = fork();
-    if (train_manager_pid < 0)
+    if (train_manager_pid < 0) // blad w fork
     {
         perror("ZARZADCA: Blad fork dla train_manager");
         exit(EXIT_FAILURE);
     }
-    if (train_manager_pid == 0)
+    if (train_manager_pid == 0) // kod w procesie potomnym
     {
-        execl("./train_manager", "./train_manager", NULL);
-        perror("ZARZADCA: Blad execl pliku train_manager");
-        exit(EXIT_FAILURE);
+        if (execl("./train_manager", "./train_manager", NULL) == -1) // sprawdzenie bledu execl
+        {
+            perror("ZARZADCA: Blad execl pliku train_manager");
+            exit(EXIT_FAILURE);
+        }
     }
 
     pid_t passenger_pid = fork();
-    if (passenger_pid < 0)
+    if (passenger_pid < 0) // blad w fork
     {
         perror("ZARZADCA: Blad fork dla passenger");
         exit(EXIT_FAILURE);
     }
-    if (passenger_pid == 0)
+    if (passenger_pid == 0) // kod w procesie potomnym
     {
-        execl("./passenger", "./passenger", NULL);
-        perror("ZARZADCA: Blad execl pliku passenger");
-        exit(EXIT_FAILURE);
+        if (execl("./passenger", "./passenger", NULL) == -1) // sprawdzenie bledu execl
+        {
+            perror("ZARZADCA: Blad execl pliku passenger");
+            exit(EXIT_FAILURE);
+        }
     }
 
     station_master(data, sem_passengers);
