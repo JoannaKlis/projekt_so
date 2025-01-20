@@ -37,12 +37,12 @@ void station_master(Data *data, int sem_passengers, int sem_train_departure) // 
             printf(COLOR_CYAN "ZARZADCA: Pociag %d odjezdza ze stacji 1.\n" COLOR_RESET, data->current_train + 1);
 
             data->free_seat = MAX_PASSENGERS; // oznaczenie pociagu jako pelny
-            //sleep(TRAIN_ARRIVAL_TIME); // podroz na stacje 2
+            sleep(TRAIN_ARRIVAL_TIME); // podroz na stacje 2
 
             printf(COLOR_CYAN "ZARZADCA: Pociag %d dotarl na stacje 2.\n" COLOR_RESET, data->current_train + 1);
             printf(COLOR_CYAN "ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n" COLOR_RESET);
 
-            //sleep(1); // czas wysiadania
+            sleep(1); // czas wysiadania
 
             data->free_seat = 0; // reset wolnych miejsc
             data->free_bike_spots = MAX_BIKES; // reset miejsc na rowery

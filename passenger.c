@@ -75,7 +75,7 @@ void passengers_generating(Data *data, int sem_passengers) // generowanie pasaze
 
         int passengers_to_generate = 5 + rand() % 6; // losowa liczba pasazerow 5-10
         data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerów
-        data->passengers_with_bikes += rand() % (passengers_to_generate + 1); // dodanie pasazerów z rowerami
+        data->passengers_with_bikes += rand() % 2; // dodanie pasazerów z rowerami
 
         printf(COLOR_MAGENTA "PASAZER: Wygenerowano %d nowych pasazerow.\n" COLOR_RESET, passengers_to_generate);
         semaphore_signal(sem_passengers); // odblokowanie danych wspoldzielonych
