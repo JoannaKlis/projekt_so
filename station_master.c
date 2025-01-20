@@ -26,8 +26,8 @@ void station_master(Data *data, int sem_passengers, int sem_train_departure) // 
 
         if (data->passengers_waiting > 0) // gdy sa oczekujacy pasazerowie
         {
-            printf(COLOR_CYAN "ZARZADCA: Liczba wszystkich oczekujacych: %d.\n" COLOR_RESET, data->passengers_waiting);
             printf(COLOR_CYAN "ZARZADCA: Pociag %d przyjechal na stacje 1.\n" COLOR_RESET, data->current_train + 1);
+            printf(COLOR_CYAN "ZARZADCA: Liczba wszystkich oczekujacych: %d.\n" COLOR_RESET, data->passengers_waiting);
 
             if (run_for_Ttime()) // odjazd pociagu po T czasie
             {
