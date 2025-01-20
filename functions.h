@@ -19,14 +19,14 @@
 // unikalne klucze IPC
 #define SHM_KEY 0x1A2B3C4D // klucz pamieci wspoldzielonej
 #define SEM_KEY_PASSENGERS 0x2B3C4D5E // klucz semafora pasazerow
-#define SEM_KEY_BIKES 0x3C4D5E6F // klucz semafora rowerow
+#define SEM_KEY_TRAIN_DEPARTURE 0x3C4D5E6F // klucz semafora odjazdow pociagow
 
 // limity i konfiguracje systemu
-#define MAX_PASSENGERS 20    // maksymalna liczba pasazerow w pociagu
-#define MAX_BIKES 5          // maksymalna liczba rowerow w pociagu
-#define MAX_TRAINS 4         // liczba pociagow
+#define MAX_PASSENGERS 20 // maksymalna liczba pasazerow w pociagu
+#define MAX_BIKES 5 // maksymalna liczba rowerow w pociagu
+#define MAX_TRAINS 4 // liczba pociagow
 #define TRAIN_DEPARTURE_TIME 12 // czas odjazdu pociagu (w sekundach)
-#define TRAIN_ARRIVAL_TIME 4    // zzas przyjazdu pociagu na nastepna stacje (w sekundach)
+#define TRAIN_ARRIVAL_TIME 4 // zzas przyjazdu pociagu na nastepna stacje (w sekundach)
 
 // kolorowanie terminala
 #define COLOR_RESET "\033[0m"
@@ -50,6 +50,20 @@ typedef struct // struktura przechowujaca dane wspoldzielone
 } Data;
 
 extern int sem_passengers; // zmienna globalna dla semaforow
+
+int run_for_Ttime() // odjazd pociagu po T czasie
+{
+    time_t start_time = time(NULL);
+    time_t current_time;
+    while (1)
+    {
+        current_time = time(NULL);
+        if (current_time - start_time >= TRAIN_DEPARTURE_TIME)
+        {
+            return 1;
+        }
+    }
+}
 
 void handle_error(const char *message) // funkcja obslugi bledow
 {
@@ -165,6 +179,38 @@ void shared_memory_remove(int memory) // funkcja usuwajaca segment pamieci wspol
     if (shmctl(memory, IPC_RMID, NULL) == -1) 
     {
         handle_error("Blad usuwania segmentu pamieci dzielonej");
+    }
+}
+
+int semaphore_create_train_departure() // tworzenie semafora odjazdu pociagu
+{
+    int semid = semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);
+    if (semid == -1) 
+    {
+        handle_error("Blad tworzenia semafora odjazdu pociagu");
+    }
+    if (semctl(semid, 0, SETVAL, 0) == -1)  // wartosc poczatkowa semafora na 0
+    {
+        handle_error("Blad inicjalizacji semafora odjazdu pociagu");
+    }
+    return semid;
+}
+
+void semaphore_signal_train_departure(int semid) // odblokowanie semafora odjazdu pociagu
+{
+    struct sembuf unlock = {0, 1, 0};
+    if (semop(semid, &unlock, 1) == -1) 
+    {
+        handle_error("Blad odblokowania semafora odjazdu pociagu");
+    }
+}
+
+void semaphore_wait_train_departure(int semid) // blokowanie semafora odjazdu pociagu
+{
+    struct sembuf lock = {0, -1, 0};
+    if (semop(semid, &lock, 1) == -1) 
+    {
+        handle_error("Blad blokowania semafora odjazdu pociagu");
     }
 }
 

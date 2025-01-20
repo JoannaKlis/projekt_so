@@ -69,7 +69,7 @@ void passengers_generating(Data *data, int sem_passengers) // generowanie pasaze
         if (data->free_seat == MAX_PASSENGERS) // sprawdzanie, czy miejsca w pociagu sa dostepne
         {
             semaphore_signal(sem_passengers); // blokada wsiadania gdy nie ma wolnych miejsc
-            sleep(1);
+            //sleep(1);
             continue;
         }
 
@@ -80,7 +80,7 @@ void passengers_generating(Data *data, int sem_passengers) // generowanie pasaze
         printf(COLOR_MAGENTA "PASAZER: Wygenerowano %d nowych pasazerow.\n" COLOR_RESET, passengers_to_generate);
         semaphore_signal(sem_passengers); // odblokowanie danych wspoldzielonych
 
-        sleep(3);
+        //sleep(3);
     }
     data->generating = 0; // flaga generowanie zakonczone
 }
@@ -98,7 +98,7 @@ int main()
 
     pthread_t keyboard_thread; // deklaracja zmiennej watku
     create_and_start_keyboard_thread(&keyboard_thread); // semafor do zarzadzania pasazerami
-    
+
     data->generating = 1; // flaga - generowanie rozpoczete
 
     passengers_generating(data, sem_passengers);
