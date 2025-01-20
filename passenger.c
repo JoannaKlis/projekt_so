@@ -69,18 +69,18 @@ void passengers_generating(Data *data, int sem_passengers) // generowanie pasaze
         if (data->free_seat == MAX_PASSENGERS) // sprawdzanie, czy miejsca w pociagu sa dostepne
         {
             semaphore_signal(sem_passengers); // blokada wsiadania gdy nie ma wolnych miejsc
-            //sleep(1);
+            sleep(1);
             continue;
         }
 
         int passengers_to_generate = 5 + rand() % 6; // losowa liczba pasazerow 5-10
-        data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerów
-        data->passengers_with_bikes += rand() % 2; // dodanie pasazerów z rowerami
+        data->passengers_waiting += passengers_to_generate; // zwiekszenie liczby oczekujacych pasazerow
+        data->passengers_with_bikes += rand() % 2; // dodanie pasazerow z rowerami
 
         printf(COLOR_MAGENTA "PASAZER: Wygenerowano %d nowych pasazerow.\n" COLOR_RESET, passengers_to_generate);
         semaphore_signal(sem_passengers); // odblokowanie danych wspoldzielonych
 
-        //sleep(3);
+        sleep(3);
     }
     data->generating = 0; // flaga generowanie zakonczone
 }

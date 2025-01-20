@@ -62,6 +62,7 @@
     "pthread.h": "c",
     "signal.h": "c",
     "errno.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "functions.h": "c"
   }
 }

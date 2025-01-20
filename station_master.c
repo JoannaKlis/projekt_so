@@ -52,6 +52,7 @@ void station_master(Data *data, int sem_passengers, int sem_train_departure) // 
             data->current_train = (data->current_train + 1) % MAX_TRAINS; // nastepny pociag
         }
         semaphore_signal(sem_passengers); // zwolnienie semafora
+        sleep(2);
     }
     semaphore_remove(sem_train_departure); // usuniecie semafora odjazdu pociagu po zakonczeniu dzialania
 }

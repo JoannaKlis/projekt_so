@@ -31,6 +31,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
                 data->passengers_with_bikes--; // zmniejszenie liczby pasazerow z rowerami
                 data->free_bike_spots--; // zmniejszenie liczby wolnych miejsc na rowery
                 printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->current_train + 1, seat + 1);
+                usleep(10000);
             }
             else if (data->passengers_waiting > 0) // obsluga pasazerow bez rowerow
             {
@@ -39,6 +40,7 @@ void handle_passenger(Data *data, int sem_passengers) // zarzadzanie pasazerami
                 data->free_seat++;
                 data->passengers_waiting--;
                 printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->current_train + 1, seat + 1);
+                usleep(10000);
             }
 
             semaphore_signal(sem_passengers); // odblokowanie dostepu do danych wspoldzielonych
