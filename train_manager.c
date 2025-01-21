@@ -6,7 +6,6 @@ int main()
     int memory;
     Data *data = NULL;
 
-    shared_memory_create(&memory);
     shared_memory_address(memory, &data);
 
     int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
