@@ -19,14 +19,18 @@
 // unikalne klucze IPC
 #define SHM_KEY 0x1A2B3C4D // klucz pamieci wspoldzielonej
 #define SEM_KEY_PASSENGERS 0x2B3C4D5E // klucz semafora pasazerow
-#define SEM_KEY_TRAIN_DEPARTURE 0x3C4D5E6F // klucz semafora odjazdow pociagow
+#define SEM_KEY_PASSENGERS_BIKES 0x2B314D5E // klucz semafora pasazerow
 
 // limity i konfiguracje systemu
 #define MAX_PASSENGERS 20 // maksymalna liczba pasazerow w pociagu
 #define MAX_BIKES 5 // maksymalna liczba rowerow w pociagu
 #define MAX_TRAINS 4 // liczba pociagow
 #define TRAIN_DEPARTURE_TIME 12 // czas odjazdu pociagu (w sekundach)
-#define TRAIN_ARRIVAL_TIME 4 // zzas przyjazdu pociagu na nastepna stacje (w sekundach)
+#define TRAIN_ARRIVAL_TIME 4 // czas przyjazdu pociagu na nastepna stacje (w sekundach)
+#define WAITING_FOR_PASSENGERS_TO_BOARD 2 // oczekiwanie na wejscie pasazerow
+#define ENTRY_OF_PASSENGERS 100000 // pasazerowie wchodza do pociagu
+#define BLOCKADE 1 // blokada wsiadania gdy nie ma wolnych miejsc
+#define GENERATION_INTERVAL 3 // odstep pomiedzy generowaniem nowych pasazerow
 
 // kolorowanie terminala
 #define COLOR_RESET "\033[0m"
@@ -37,11 +41,12 @@
 #define COLOR_BLUE "\033[34m"
 #define COLOR_MAGENTA "\033[35m"
 #define COLOR_CYAN "\033[36m"
+#define COLOR_PINK "\033[38;5;213m"
 
 typedef struct // struktura przechowujaca dane wspoldzielone
 {
     short current_train; // aktualny pociag na stacji
-    short free_seat;     // numer 1 wolnego miejsca w pociagu
+    short free_seat; // numer 1 wolnego miejsca w pociagu
     short train_data[MAX_TRAINS][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
     short passengers_waiting; // liczba oczekujacych pasazerow
     short generating; // flaga czy pasazerowie sa generowani
@@ -75,7 +80,7 @@ void handle_error(const char *message) // funkcja obslugi bledow
 size_t calculate_directory_size(const char *path) // obliczanie calkowitego rozmiaru katalogu
 {
     size_t total_size = 0;
-    struct stat st; // struktura przechowujaca informacje o pliku 
+    struct stat st; // struktura przechowujaca informacje o pliku
     struct dirent *entry; // struktura opisujaca wpis w katlogu
 
     DIR *dir = opendir(path); // otworzenie katalogu
@@ -101,22 +106,26 @@ size_t calculate_directory_size(const char *path) // obliczanie calkowitego rozm
     return total_size;
 }
 
-void semaphore_wait(int semid) // funkcja blokujaca semafor
+void semaphore_wait(int semid)
 {
-    struct sembuf lock = {0, -1, 0}; // operacja zmniejszenia semafora
-    if (semop(semid, &lock, 1) == -1) // wykonanie operacji na semaforze
+    //printf("DEBUG: Wartość semafora PRZED WAIT: %d\n", semctl(semid, 0, GETVAL));
+    struct sembuf lock = {0, -1, 0};
+    if (semop(semid, &lock, 1) == -1)
     {
         handle_error("Blad blokowania semafora");
     }
+    //printf("DEBUG: Wartość semafora PO WAIT: %d\n", semctl(semid, 0, GETVAL));
 }
 
-void semaphore_signal(int semid) // funkcja odblokowujaca emafor
+void semaphore_signal(int semid)
 {
-    struct sembuf unlock = {0, 1, 0}; // operacja zwiekszenia semafora
-    if (semop(semid, &unlock, 1) == -1) // wykonanie operacji na semaforze
+    //printf("DEBUG: Wartość semafora PRZED SIGNAL: %d\n", semctl(semid, 0, GETVAL));
+    struct sembuf unlock = {0, 1, 0};
+    if (semop(semid, &unlock, 1) == -1)
     {
         handle_error("Blad odblokowania semafora");
     }
+    //printf("DEBUG: Wartość semafora PO SIGNAL: %d\n", semctl(semid, 0, GETVAL));
 }
 
 int semaphore_create(key_t key) // funkcja tworzaca semafor
@@ -176,41 +185,9 @@ void shared_memory_detach(Data *data) // funkcja odlaczajaca segment pamieci wsp
 
 void shared_memory_remove(int memory) // funkcja usuwajaca segment pamieci wspoldzielonej
 {
-    if (shmctl(memory, IPC_RMID, NULL) == -1) 
+    if (shmctl(memory, IPC_RMID, NULL) == -1)
     {
         handle_error("Blad usuwania segmentu pamieci dzielonej");
-    }
-}
-
-int semaphore_create_train_departure() // tworzenie semafora odjazdu pociagu
-{
-    int semid = semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);
-    if (semid == -1) 
-    {
-        handle_error("Blad tworzenia semafora odjazdu pociagu");
-    }
-    if (semctl(semid, 0, SETVAL, 0) == -1)  // wartosc poczatkowa semafora na 0
-    {
-        handle_error("Blad inicjalizacji semafora odjazdu pociagu");
-    }
-    return semid;
-}
-
-void semaphore_signal_train_departure(int semid) // odblokowanie semafora odjazdu pociagu
-{
-    struct sembuf unlock = {0, 1, 0};
-    if (semop(semid, &unlock, 1) == -1) 
-    {
-        handle_error("Blad odblokowania semafora odjazdu pociagu");
-    }
-}
-
-void semaphore_wait_train_departure(int semid) // blokowanie semafora odjazdu pociagu
-{
-    struct sembuf lock = {0, -1, 0};
-    if (semop(semid, &lock, 1) == -1) 
-    {
-        handle_error("Blad blokowania semafora odjazdu pociagu");
     }
 }
 

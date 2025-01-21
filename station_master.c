@@ -2,62 +2,70 @@
 
 void wait_for_child_process(pid_t pid, const char *process_name) // oczekiwanie na zakonczenie procesu potomnego
 {
-    if (waitpid(pid, NULL, 0) == -1)
+    printf(COLOR_CYAN "ZARZADCA: Oczekiwanie na zakonczenie procesu %s (PID: %d).\n" COLOR_RESET, process_name, pid);
+
+    if (waitpid(pid, NULL, 0) == -1) // oczekiwanie na zakonczenie procesu za pomoca waitpid
     {
         char error_message[256];
         snprintf(error_message, sizeof(error_message), COLOR_RED "ZARZADCA: Blad podczas oczekiwania na %s" COLOR_RESET, process_name);
         handle_error(error_message);
     }
+    printf(COLOR_GREEN "ZARZADCA: Proces %s (PID: %d) zakonczony pomyslnie.\n" COLOR_RESET, process_name, pid);
 }
 
-void station_master(Data *data, int sem_passengers, int sem_train_departure) // zarzadzanie odjazdami pociagow
+void station_master(Data *data, int sem_passengers_bikes, int sem_passengers) // zarzadzanie pociagami
 {
-    while (1)  // dzialanie zarzadcy
+    while (1)
     {
-        semaphore_wait(sem_passengers); // zablokowanie dostepu do danych wspoldzielonych
+        printf(COLOR_CYAN "ZARZADCA: Pociag %d przyjechal na stacje 1.\n" COLOR_RESET, data->current_train + 1);
+
+        semaphore_signal(sem_passengers_bikes); // odblokowanie wejscia do pociagu dla pasazerow z rowerami
+        printf(COLOR_GREEN "ZARZADCA: Wejscie dla pasazerow z rowerami odblokowane.\n" COLOR_RESET);
+
+        semaphore_signal(sem_passengers); // odblokowanie wejscia do pociagu dla pasazera bez rowerow
+        printf(COLOR_GREEN "ZARZADCA: Wejscie dla pasazerow bez rowerow odblokowane.\n" COLOR_RESET);
+
+        printf(COLOR_CYAN "ZARZADCA: Liczba wszystkich oczekujacych: %d.\n" COLOR_RESET, data->passengers_waiting);
+        sleep(WAITING_FOR_PASSENGERS_TO_BOARD); // oczekiwanie na wejscie pasazerow
+
+        if (run_for_Ttime())
+        {
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d odjezdza ze stacji 1.\n" COLOR_RESET, data->current_train + 1);
+
+            semaphore_wait(sem_passengers_bikes); // blokada wejscia do pociagu dla pasazerow z rowerami
+            printf(COLOR_RED "ZARZADCA: Wejscie dla pasazerow z rowerami zablokowane.\n" COLOR_RESET);
+
+            semaphore_wait(sem_passengers); // blokada wejscia do pociagu dla pasazerow bez rowerami
+            printf(COLOR_RED "ZARZADCA: Wejscie dla pasazerow bez rowerami zablokowane.\n" COLOR_RESET);
+
+            data->free_seat = MAX_PASSENGERS; // aktualizacja liczby miejsc w pociagu
+
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d dotarl na stacje 2.\n" COLOR_RESET, data->current_train + 1);
+
+            sleep(TRAIN_ARRIVAL_TIME); // prowrot ze stacji 2
+
+            data->free_seat = 0; // reset miejsc po powrocie
+            data->free_bike_spots = MAX_BIKES; // reset miejsc dla rowerow
+
+            printf(COLOR_CYAN "ZARZADCA: Pociag %d wrocil na stacje 1.\n" COLOR_RESET, data->current_train + 1);
+
+            data->current_train = (data->current_train + 1) % MAX_TRAINS; // obieg z pociagami
+        }
 
         if (data->passengers_waiting == 0 && !data->generating) // sprawdzenie, czy brak oczekujacych pasazerow oraz czy zakonczono generowanie
         {
             printf(COLOR_BLUE "ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n" COLOR_RESET);
             data->generating = -1; // flaga - zarzadca konczy dzialanie
+
+            // odblokowanie semaforow na zakonczenie dzialania
             semaphore_signal(sem_passengers);
+            semaphore_signal(sem_passengers_bikes);
             break;
         }
-
-        if (data->passengers_waiting > 0) // gdy sa oczekujacy pasazerowie
-        {
-            printf(COLOR_CYAN "ZARZADCA: Pociag %d przyjechal na stacje 1.\n" COLOR_RESET, data->current_train + 1);
-            printf(COLOR_CYAN "ZARZADCA: Liczba wszystkich oczekujacych: %d.\n" COLOR_RESET, data->passengers_waiting);
-
-            if (run_for_Ttime()) // odjazd pociagu po T czasie
-            {
-                semaphore_signal_train_departure(sem_train_departure); // odblokowanie semafora po uplywie czasu
-            }
-
-            printf(COLOR_CYAN "ZARZADCA: Pociag %d odjezdza ze stacji 1.\n" COLOR_RESET, data->current_train + 1);
-
-            data->free_seat = MAX_PASSENGERS; // oznaczenie pociagu jako pelny
-            sleep(TRAIN_ARRIVAL_TIME); // podroz na stacje 2
-
-            printf(COLOR_CYAN "ZARZADCA: Pociag %d dotarl na stacje 2.\n" COLOR_RESET, data->current_train + 1);
-            printf(COLOR_CYAN "ZARZADCA: Pasazerowie wysiadaja na stacji 2.\n" COLOR_RESET);
-
-            sleep(1); // czas wysiadania
-
-            data->free_seat = 0; // reset wolnych miejsc
-            data->free_bike_spots = MAX_BIKES; // reset miejsc na rowery
-
-            printf(COLOR_CYAN "ZARZADCA: Pociag %d wrocil na stacje 1.\n" COLOR_RESET, data->current_train + 1);
-
-            data->current_train = (data->current_train + 1) % MAX_TRAINS; // nastepny pociag
-        }
-        semaphore_signal(sem_passengers); // zwolnienie semafora
-        sleep(2);
     }
-    semaphore_remove(sem_train_departure); // usuniecie semafora odjazdu pociagu po zakonczeniu dzialania
 }
 
-int main() 
+int main()
 {
     int memory;
     Data *data = NULL;
@@ -80,14 +88,26 @@ int main()
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
 
+    int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
     int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
-    int sem_train_departure = semaphore_create(SEM_KEY_TRAIN_DEPARTURE);
+
+    if (semctl(sem_passengers_bikes, 0, SETVAL, 1) == -1)
+    {
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow z rowerami");
+    }
+    if (semctl(sem_passengers, 0, SETVAL, 1) == -1)
+    {
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow bez rowerow");
+    }
 
     data->current_train = 0; // reset wyboru pociagu
     data->free_seat = 0; // reset wolnych miejsc
     data->free_bike_spots = MAX_BIKES; // reset miejsc na rowery
     data->passengers_waiting = 0; // ustawienie poczatkowej liczby czekajacych pasazerow
     data->generating = 1; // pasazerowie sa generowani
+
+    semaphore_signal(sem_passengers_bikes); // odblokowanie aby uniknac konfliktu w synchronizacji
+    semaphore_signal(sem_passengers); // odblokowanie aby uniknac konfliktu w synchronizacji
 
     pid_t train_manager_pid = fork(); // uruchomienie procesu kierownika pociagu
     if (train_manager_pid < 0) // blad w fork
@@ -115,13 +135,14 @@ int main()
         }
     }
 
-    station_master(data, sem_passengers, sem_train_departure);
+    station_master(data, sem_passengers_bikes, sem_passengers); // uruchomienie dzialania zarzadcy stacji
 
-    wait_for_child_process(train_manager_pid, "train_manager");
+    // oczekiwanie na zakonczenie procesow potomnych
     wait_for_child_process(passenger_pid, "passenger");
+    wait_for_child_process(train_manager_pid, "train_manager");
 
-    shared_memory_detach(data);
-    shared_memory_remove(memory);
+    shared_memory_detach(data); // zwolnienie pamieci dzielonej
+    shared_memory_remove(memory); // zwolnienie semaforow
 
     return 0;
 }
