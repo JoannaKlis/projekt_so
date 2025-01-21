@@ -98,7 +98,7 @@ void passengers_generating(Data *data, int sem_passengers_bikes, int sem_passeng
         }
         else
         {
-            printf(COLOR_PINK "PASAZER: Brak miejsc dla pasazerow z rowerami.\n" COLOR_RESET);
+            printf(COLOR_MAGENTA "PASAZER: Brak miejsc dla pasazerow z rowerami.\n" COLOR_RESET);
         }
 
         semaphore_signal(sem_passengers_bikes);
