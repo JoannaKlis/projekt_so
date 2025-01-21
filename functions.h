@@ -27,10 +27,7 @@
 #define MAX_TRAINS 4 // liczba pociagow
 #define TRAIN_DEPARTURE_TIME 12 // czas odjazdu pociagu (w sekundach)
 #define TRAIN_ARRIVAL_TIME 4 // czas przyjazdu pociagu na nastepna stacje (w sekundach)
-#define WAITING_FOR_PASSENGERS_TO_BOARD 2 // oczekiwanie na wejscie pasazerow
-#define ENTRY_OF_PASSENGERS 100000 // pasazerowie wchodza do pociagu
-#define BLOCKADE 1 // blokada wsiadania gdy nie ma wolnych miejsc
-#define GENERATION_INTERVAL 3 // odstep pomiedzy generowaniem nowych pasazerow
+#define BLOCK_SLEEP 1 // szybki dostep do wylaczenia funkcji sleep() - 0 aby wylaczyc
 
 // kolorowanie terminala
 #define COLOR_RESET "\033[0m"
