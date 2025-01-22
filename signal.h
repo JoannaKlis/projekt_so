@@ -60,6 +60,16 @@ void *keyboard_signal(void *arg) // odczyt sygnalu z klawiatury
     return NULL;
 }
 
+void handle_continue(int signal)  // przywrocenie czekania na kolejny sygnal
+{
+    struct termios newt;
+    tcgetattr(STDIN_FILENO, &newt);
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    printf(COLOR_PINK "SIGNAL: Proces wznowiony. Terminal skonfigurowany.\n" COLOR_RESET);
+}
+
+
 void create_and_start_keyboard_thread(pthread_t *thread) // tworzenie i uruchomienie watku obslugi klawiatury
 {
     if (pthread_create(thread, NULL, keyboard_signal, NULL) != 0)

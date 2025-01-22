@@ -1,5 +1,6 @@
 #include "functions.h"
 #include "station_master.h"
+#include "signal.h"
 
 int main()
 {
@@ -23,6 +24,8 @@ int main()
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
+
+    signal(SIGCONT, handle_continue); // wznowienie sygnalu
 
     int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
     int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
