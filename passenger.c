@@ -9,6 +9,7 @@ int main()
     int memory; // id pamieci dzielonej
     Data *data = NULL; // wskaznik na strukture danych wspoldzielonych
 
+    shared_memory_create(&memory);
     shared_memory_address(memory, &data);
 
     int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
