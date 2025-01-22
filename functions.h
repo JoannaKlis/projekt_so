@@ -51,8 +51,6 @@ typedef struct // struktura przechowujaca dane wspoldzielone
     short passengers_with_bikes; // pasazerowie z rowerami
 } Data;
 
-extern int sem_passengers; // zmienna globalna dla semaforow
-
 int run_for_Ttime() // odjazd pociagu po T czasie
 {
     time_t start_time = time(NULL);
