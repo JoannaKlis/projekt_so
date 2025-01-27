@@ -27,9 +27,14 @@ int main()
 
     signal(SIGCONT, handle_continue); // wznowienie sygnalu
 
+    int sem_train_entry = semaphore_create(SEM_KEY_TRAIN_ENTRY);
     int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
     int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
+    if (semctl(sem_train_entry, 0, SETVAL, 1) == -1) 
+    {
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia do pociągu");
+    }
     if (semctl(sem_passengers_bikes, 0, SETVAL, 1) == -1)
     {
         handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow z rowerami");
@@ -61,20 +66,34 @@ int main()
         }
     }
 
-    pid_t passenger_pid = fork(); // uruchomienie procesu generowania pasazerow
-    if (passenger_pid < 0) // blad w fork
+    pid_t passenger_pid; // deklaracja pidu pasazera
+
+    for (int i = 0; i < MAX_PASSENGERS_GENERATE; i++)
     {
-        handle_error("ZARZADCA: Blad fork dla passenger");
-    }
-    if (passenger_pid == 0) // kod w procesie potomnym
-    {
-        if (execl("./passenger", "./passenger", NULL) == -1) // sprawdzenie bledu execl
+
+        if (running == 0) // Sprawdzenie flagi running
         {
-            handle_error("ZARZADCA: Blad execl pliku passenger");
+            printf(COLOR_RED "ZARZADCA: Otrzymano sygnal do przerwania generowania pasazerow.\n" COLOR_RESET);
+            break; // przerwanie generowania pasazerow
         }
+
+        passenger_pid = fork();
+
+        if (passenger_pid < 0) // blad w fork
+        {
+            handle_error("ZARZADCA: Blad fork dla passenger");
+        }
+        if (passenger_pid == 0) // kod w procesie potomnym
+        {
+            if (execl("./passenger", "./passenger", NULL) == -1) // sprawdzenie bledu execl
+            {
+                handle_error("ZARZADCA: Blad execl pliku passenger");
+            }
+        }
+        usleep(BLOCK_SLEEP*100000);
     }
 
-    station_master(data, sem_passengers_bikes, sem_passengers); // uruchomienie dzialania zarzadcy stacji
+    station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); // uruchomienie dzialania zarzadcy stacji
 
     // oczekiwanie na zakonczenie procesow potomnych
     wait_for_child_process(passenger_pid, "passenger");

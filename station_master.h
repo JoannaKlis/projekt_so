@@ -15,7 +15,7 @@ void wait_for_child_process(pid_t pid, const char *process_name) // oczekiwanie 
     printf(COLOR_GREEN "ZARZADCA: Proces %s (PID: %d) zakonczony pomyslnie.\n" COLOR_RESET, process_name, pid);
 }
 
-void station_master(Data *data, int sem_passengers_bikes, int sem_passengers) // zarzadzanie pociagami
+void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, int sem_train_entry) // zarzadzanie pociagami
 {
     while (1)
     {
