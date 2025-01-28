@@ -23,7 +23,7 @@
 #define SEM_KEY_TRAIN_ENTRY 0x2B314D1E // klucz semafora wejscia
 
 // limity i konfiguracje systemu
-#define MAX_PASSENGERS_GENERATE 100 //maksymalna liczba dopuszczalnych procesow
+#define MAX_PASSENGERS_GENERATE 50 //maksymalna liczba dopuszczalnych procesow
 #define MAX_PASSENGERS 20 // maksymalna liczba pasazerow w pociagu
 #define MAX_BIKES 5 // maksymalna liczba rowerow w pociagu
 #define MAX_TRAINS 4 // liczba pociagow
@@ -51,6 +51,7 @@ typedef struct // struktura przechowujaca dane wspoldzielone
     short generating; // flaga czy pasazerowie sa generowani
     short free_bike_spots; // liczba wolnych miejsc na rowery
     short passengers_with_bikes; // pasazerowie z rowerami
+    pid_t passenger_pid;
 } Data;
 
 int run_for_Ttime() // odjazd pociagu po T czasie

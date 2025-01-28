@@ -8,35 +8,45 @@ volatile sig_atomic_t signal2 = 1; // flaga dla sygnalu CTRL+L
 
 pthread_mutex_t signal_mutex = PTHREAD_MUTEX_INITIALIZER; // mutez uzywany do synchronizacjji dostepu do flag
 
-void set_running(int value)  // funkcja ustawia wartosc flagi running w sposob bezpieczny dla watku
+void set_running(int value)
 {
-    if (pthread_mutex_lock(&signal_mutex) != 0) 
+    if (value == 0) // flaga running pozostaje 0 jesli juz wyslalismy sygnal
     {
-        perror(COLOR_RED "SIGNAL: Blad przy blokowaniu mutexu w set_running" COLOR_RESET);
-        return; // gdy nastapi blad blokowania, koniec dzialania
+        if (pthread_mutex_lock(&signal_mutex) != 0)
+        {
+            perror(COLOR_RED "SIGNAL: Blad przy blokowaniu mutexu w set_running" COLOR_RESET);
+            return;
+        }
+        running = value;
+        printf(COLOR_YELLOW "DEBUG: Flaga running ustawiona na %d.\n" COLOR_RESET, value);
+        if (pthread_mutex_unlock(&signal_mutex) != 0)
+        {
+            perror(COLOR_RED "SIGNAL: Blad przy odblokowywaniu mutexu w set_running" COLOR_RESET);
+        }
     }
-    running = value; // nowa wartosc flagi
-    if (pthread_mutex_unlock(&signal_mutex) != 0) 
+    else
     {
-        perror(COLOR_RED "SIGNAL: Blad przy odblokowywaniu mutexu w set_running" COLOR_RESET);
+        printf(COLOR_YELLOW "DEBUG: Proba ustawienia flagi running na inna wartosc niz 0 zignorowana.\n" COLOR_RESET);
     }
 }
 
-int get_running() // zwara wartosc running
+int get_running()
 {
     int value;
-    if (pthread_mutex_lock(&signal_mutex) != 0) 
+    if (pthread_mutex_lock(&signal_mutex) != 0)
     {
         perror(COLOR_RED "SIGNAL: Blad przy blokowaniu mutexu w get_running" COLOR_RESET);
-        return -1; // gdy nastapi blad blokowania
+        return -1;
     }
-    value = running; // pobranie wartosci flagi
-    if (pthread_mutex_unlock(&signal_mutex) != 0) 
+    value = running;
+    printf(COLOR_YELLOW "DEBUG: Flaga running odczytana jako %d.\n" COLOR_RESET, value);
+    if (pthread_mutex_unlock(&signal_mutex) != 0)
     {
         perror(COLOR_RED "SIGNAL: Blad przy odblokowywaniu mutexu w get_running" COLOR_RESET);
     }
     return value;
 }
+
 
 void set_signal1(int value) // ustawienie wartosci flagi dla sygnalu 1
 {
@@ -123,6 +133,7 @@ void *keyboard_signal(void *arg) // odczyt sygnalu z klawiatury
         {
             printf(COLOR_PINK "SIGNAL: Przeslano sygnal CTRL+N. Koniec generowania pasazerow.\n" COLOR_RESET);
             set_running(0); // zatrzymanie procesu generowania pasazerow
+            printf(COLOR_YELLOW "DEBUG: Flaga running ustawiona na 0.\n" COLOR_RESET);
             break;
         }
         else if (ch == 11)

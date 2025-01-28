@@ -26,7 +26,7 @@ void handle_passenger(Data *data, int sem_passengers_bikes, int sem_passengers, 
                 data->passengers_with_bikes--; // zmniejszenie liczby pasazerow z rowerami
                 data->free_bike_spots--; // zmniejszenie liczby wolnych miejsc na rowery
 
-                printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->current_train + 1, seat + 1);
+                printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer %d z rowerem wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->passenger_pid, data->current_train + 1, seat + 1);
 
                 semaphore_signal(sem_passengers_bikes);
                 printf(COLOR_RED "KIEROWNIK POCIAGU: Wejscie dla pasazerow z rowerami zostalo zablokowane.\n" COLOR_RESET);
@@ -43,7 +43,7 @@ void handle_passenger(Data *data, int sem_passengers_bikes, int sem_passengers, 
                 data->free_seat++;
                 data->passengers_waiting--;
 
-                printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->current_train + 1, seat + 1);
+                printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pasazer %d bez roweru wsiadl do pociagu %d i zajal miejsce %d.\n" COLOR_RESET, data->passenger_pid, data->current_train + 1, seat + 1);
 
                 semaphore_signal(sem_passengers);
                 printf(COLOR_RED "KIEROWNIK POCIAGU: Wejscie dla pasazerow bez rowerow zostalo zablokowane.\n" COLOR_RESET);

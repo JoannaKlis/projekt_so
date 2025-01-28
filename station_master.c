@@ -68,15 +68,11 @@ int main()
 
     pid_t passenger_pid; // deklaracja pidu pasazera
 
-    for (int i = 0; i < MAX_PASSENGERS_GENERATE; i++)
+    int i = 0;
+    data->generating = 1; // flaga - generowanie rozpoczete
+
+    while (i < MAX_PASSENGERS_GENERATE && running)
     {
-
-        if (running == 0) // Sprawdzenie flagi running
-        {
-            printf(COLOR_RED "ZARZADCA: Otrzymano sygnal do przerwania generowania pasazerow.\n" COLOR_RESET);
-            break; // przerwanie generowania pasazerow
-        }
-
         passenger_pid = fork();
 
         if (passenger_pid < 0) // blad w fork
@@ -90,8 +86,10 @@ int main()
                 handle_error("ZARZADCA: Blad execl pliku passenger");
             }
         }
-        usleep(BLOCK_SLEEP*100000);
+        usleep(BLOCK_SLEEP * 100000);
+        i++;
     }
+    data->generating = 0; // Zakończenie generowania
 
     station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); // uruchomienie dzialania zarzadcy stacji
 

@@ -38,8 +38,6 @@ int main()
     pthread_t keyboard_thread; // deklaracja zmiennej watku
     create_and_start_keyboard_thread(&keyboard_thread); // semafor do zarzadzania pasazerami
 
-    data->generating = 1; // flaga - generowanie rozpoczete
-
     passengers_generating(data, sem_passengers_bikes, sem_passengers, sem_train_entry);
 
     wait_for_keyboard_thread(&keyboard_thread);
