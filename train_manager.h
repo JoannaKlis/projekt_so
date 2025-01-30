@@ -1,7 +1,7 @@
 #ifndef TRAIN_MANAGER_H
 #define TRAIN_MANAGER_H
 
-void handle_passenger(Data *data, int sem_passengers_bikes, int sem_passengers, int sem_train_entry) // zarzadzanie pasazerami
+void handle_passenger(Data *data, int sem_passengers_bikes, int sem_passengers) // zarzadzanie pasazerami
 {
     printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Oczekiwanie na pociag: %d.\n" COLOR_RESET, data->current_train + 1);
 
@@ -11,8 +11,6 @@ void handle_passenger(Data *data, int sem_passengers_bikes, int sem_passengers, 
     {
         while (data->free_seat < MAX_PASSENGERS && data->passengers_waiting > 0) // wsiadanie do pociagu
         {
-            semaphore_wait(sem_train_entry); // zgoda na wejscie
-
             if (data->passengers_with_bikes > 0 && data->free_bike_spots > 0) // obsluga pasazerow z rowerami
             {
                 printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Oczekiwanie na otwarcie wejscia dla pasazerow z rowerami.\n" COLOR_RESET);
@@ -49,7 +47,6 @@ void handle_passenger(Data *data, int sem_passengers_bikes, int sem_passengers, 
                 printf(COLOR_RED "KIEROWNIK POCIAGU: Wejscie dla pasazerow bez rowerow zostalo zablokowane.\n" COLOR_RESET);
                 usleep(BLOCK_SLEEP*100000);
             }
-            semaphore_signal(sem_train_entry); // odblokowanie wejscia dla kolejnych pasazerow
         }
 
         if (data->free_seat == MAX_PASSENGERS && !train_full_reported) // pociag jest pelny

@@ -20,7 +20,9 @@
 #define SHM_KEY 0x1A2B3C4D // klucz pamieci wspoldzielonej
 #define SEM_KEY_PASSENGERS 0x2B3C4D5E // klucz semafora pasazerow
 #define SEM_KEY_PASSENGERS_BIKES 0x2B314D5E // klucz semafora pasazerow
-#define SEM_KEY_TRAIN_ENTRY 0x2B314D1E // klucz semafora wejscia
+#define SEM_KEY_TRAIN_ARRIVAL 0x3A2B3C4D
+#define SEM_KEY_BOARDING_COMPLETE 0x4B3C4D5E
+#define SEM_KEY_TRAIN_DEPARTURE 0x5C4D5E6F
 
 // limity i konfiguracje systemu
 #define MAX_PASSENGERS_GENERATE 50 //maksymalna liczba dopuszczalnych procesow

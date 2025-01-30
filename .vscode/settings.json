@@ -65,6 +65,7 @@
     "string.h": "c",
     "functions.h": "c",
     "dirent.h": "c",
-    "train_manager.h": "c"
+    "train_manager.h": "c",
+    "stdio.h": "c"
   }
 }
