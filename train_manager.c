@@ -23,26 +23,23 @@ int main()
         handle_error("KIEROWNIK POCIAGU: Blad otwierania kolejki komunikatow");
     }
 
-    TrainMessage msg; // pobranie nr pociagu
-    if (msgrcv(msgid, &msg, sizeof(msg.train_number), getpid(), 0) == -1) 
-    {
-        handle_error("KIEROWNIK POCIAGU: Blad odbierania numeru pociagu");
-    }
-
+    struct TrainMessage msg; // pobranie nr pociagu
+    receive_message(msgid,getpid(),&msg);
     int train_number = msg.train_number;
+
     printf(COLOR_CYAN "KIEROWNIK POCIAGU (PID %d): Zarzadzam pociagiem numer %d\n" COLOR_RESET, getpid(), train_number);
 
     while (1) 
     {
-        msg.train_number = train_number; // wyslanie wiadomosci z nr pociagu
-        msg.mtype = 1;
-        if (msgsnd(msgid, &msg, sizeof(msg.train_number), 0) == -1) 
-        {
-            handle_error("KIEROWNIK POCIAGU: Blad wysylania numeru pociagu");
-        }
         printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pociag %d czeka na zgode na wjazd na peron.\n" COLOR_RESET, train_number);
+        
+        //Wysyła wiadomość że chce wjechać
+        msg.train_number = train_number;
+        msg.mtype = 1;
+        send_message(msgid,&msg);
 
-        semaphore_wait(sem_train_entry); // oczekiwanie na zgode zarzadcy stacji
+        //Czeka na zezwolenie na wjazd
+        receive_message(msgid,train_number+10,&msg);
 
         printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pociag %d wjezdza na peron.\n" COLOR_RESET, train_number);
 
@@ -50,12 +47,10 @@ int main()
 
         printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pociag %d opuszcza peron.\n" COLOR_RESET, train_number);
 
+        // Wysyła wiadomość że pojechał
         msg.train_number = train_number; // wyslanie wiadomosci z nr pociagu
         msg.mtype = 2;
-        if (msgsnd(msgid, &msg, sizeof(msg.train_number), 0) == -1)
-        {
-            handle_error("KIEROWNIK POCIAGU: Blad wysylania numeru pociagu");
-        }
+        send_message(msgid,&msg);
 
         sleep(TRAIN_DEPARTURE_TIME); // czas dotarcia na stacje 2
     }

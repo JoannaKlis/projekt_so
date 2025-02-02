@@ -21,22 +21,23 @@ int main()
     int sem_bike_entry = semaphore_create(SEM_KEY_BIKE_ENTRY);
     int sem_bike_exit = semaphore_create(SEM_KEY_BIKE_EXIT);
 
-    if (semctl(sem_passengers_entry, 0, SETVAL, 1) == -1) 
+    if (semctl(sem_passengers_entry, 0, SETVAL, 0) == -1) 
     {
         handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia pasazerow");
     }
-    if (semctl(sem_passengers_exit, 0, SETVAL, 1) == -1) 
+    if (semctl(sem_passengers_exit, 0, SETVAL, 0) == -1) 
     {
         handle_error("ZARZADCA: Blad inicjalizacji semafora dla wyjścia pasazerow");
     }
-    if (semctl(sem_bike_entry, 0, SETVAL, 1) == -1) 
+    if (semctl(sem_bike_entry, 0, SETVAL, 0) == -1) 
     {
         handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia pasazerow z rowerami");
     }
-    if (semctl(sem_bike_exit, 0, SETVAL, 1) == -1) 
+    if (semctl(sem_bike_exit, 0, SETVAL, 0) == -1) 
     {
         handle_error("ZARZADCA: Blad inicjalizacji semafora dla wyjścia pasazerów z rowerami");
     }
+
 
     data->current_train = 0; // reset wyboru pociagu
     data->free_seat = 0; // reset wolnych miejsc
@@ -67,7 +68,7 @@ int main()
             }
         }
 
-        TrainMessage msg; // komunikat o danym numerze pociagu do kierownika
+        struct TrainMessage msg; // komunikat o danym numerze pociagu do kierownika
         msg.mtype = train_manager_pid; // PID kierownika jako typ wiadomości
         msg.train_number = train;
         if (msgsnd(msgid, &msg, sizeof(msg.train_number), 0) == -1) 

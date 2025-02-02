@@ -50,22 +50,21 @@
 
 #define MSG_KEY 0x2B3C4D7F // klucz dla kolejki komunikatów
 
-typedef struct 
+struct TrainMessage 
 {
     long mtype;    // typ wiadomosci (np. numer pociągu)
     int train_number; // numer pociągu
-} TrainMessage;
+};
 
 
 typedef struct // struktura przechowujaca dane wspoldzielone
 {
     short current_train; // aktualny pociag na stacji
-    short free_seat; // numer 1 wolnego miejsca w pociagu
+    short free_seat; // index wolnego miejsca w pociagu
     short train_data[MAX_TRAINS][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
     short passengers_waiting; // liczba oczekujacych pasazerow
     short generating; // flaga czy pasazerowie sa generowani
     short free_bike_spots; // liczba wolnych miejsc na rowery
-    short passengers_with_bikes; // pasazerowie z rowerami
     pid_t passenger_pid;
 } Data;
 
@@ -121,9 +120,6 @@ void semaphore_set_to_one(int sem_id) // ustawienie wartosci semafora na 1
     if (semctl(sem_id, 0, SETVAL, 1) == -1) 
     {
         handle_error("ZARZADCA: Blad ustawiania wartosci semafora na 1");
-    } else 
-    {
-        printf(COLOR_GREEN "ZARZADCA: Semafor ustawiony na 1.\n" COLOR_RESET);
     }
 }
 
@@ -132,9 +128,6 @@ void semaphore_set_to_zero(int sem_id) // ustawienie wartosci semafora na 0
     if (semctl(sem_id, 0, SETVAL, 0) == -1) 
     {
         handle_error("ZARZADCA: Blad ustawiania wartosci semafora na 1");
-    } else 
-    {
-        printf(COLOR_GREEN "ZARZADCA: Semafor ustawiony na 1.\n" COLOR_RESET);
     }
 }
 
@@ -210,6 +203,46 @@ void shared_memory_remove(int memory) // funkcja usuwajaca segment pamieci wspol
     if (shmctl(memory, IPC_RMID, NULL) == -1)
     {
         handle_error("Blad usuwania segmentu pamieci dzielonej");
+    }
+}
+
+// Odbiera pierwszy komunikat typu msgtype bez możliwości przerwania przez sygnał
+int receive_message(int msq_ID, long msgtype, struct TrainMessage *msg) {
+    while (1) {
+        if (msgrcv(msq_ID, msg, sizeof(struct TrainMessage) - sizeof(long), msgtype, 0) == -1) {
+            if (errno == EINTR) {
+                printf("Przerwano przez sygnał podczas odbierania komunikatu o typie: %ld\n", msgtype);
+                // Przerwane przez sygnał – ponawiamy
+                continue;
+            } else if (errno == ENOMSG) {
+                // Brak komunikatu
+                printf("Brak komunikatu w kolejce o typie: %ld\n", msgtype);
+                continue;
+            } else {
+                // Błąd
+                printf("Blad recieve_message: %ld\n", msgtype);
+                return -1;
+            }
+        }
+        // Sukces
+        return 1;
+    }
+}
+
+// Wysyła komunikat
+int send_message(int msq_ID, struct TrainMessage *msg) {
+    while (1) {
+        if (msgsnd(msq_ID, msg, sizeof(struct TrainMessage) - sizeof(long), 0) == -1) {
+            if (errno == EINTR) {
+                printf("Przerwano przez sygnał podczas wysyłania komunikatu\n");
+                // Przerwane przez sygnał – ponawiamy
+                continue;
+            }
+            perror("Blad send_message");
+            return -1;
+        }
+        // Sukces
+        return 0;
     }
 }
 
