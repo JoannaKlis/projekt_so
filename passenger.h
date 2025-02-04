@@ -2,35 +2,49 @@
 #define PASSENGER_H
 #include "signal.h"
 
-void passenger_process(Data *data, int sem_passengers_entry, int sem_bike_entry) 
+void passengers_generating(Data *data, int sem_passengers_bikes, int sem_passengers, int sem_train_entry) // generowanie jednego pasazera
 {
-    int has_bike = rand() % 2; // losowo decydujemy, czy pasazer ma rower
-    data->passengers_waiting++;
-
-    if (has_bike) 
+    if (!running) 
     {
-        semaphore_wait(sem_bike_entry); // czeka na dostep do wejscia dla pasazerow z rowerami
-        int seat = data->free_seat; // id wolnego miejsca w pociagu
-        data->train_data[data->current_train][seat] = getpid(); // przypisanie pasazera do miejsca
-        data->free_seat++; // zwiekszenie liczby zajetych miejsc
-        data->passengers_waiting--; // zmniejszenie liczby oczekujacych pasazerow
-        data->free_bike_spots--; // zmniejszenie liczby wolnych miejsc na rowery
-        printf(COLOR_MAGENTA "PASAZER: Pasazer %d z rowerem zajal miejsce %d w pociagu\n" COLOR_RESET, getpid(), seat + 1);
-        if (data->free_bike_spots > 0 && data->free_seat < MAX_PASSENGERS) semaphore_signal(sem_bike_entry);
-    } else 
-    {
-        semaphore_wait(sem_passengers_entry); // czeka na dostep do wejscia dla pasazerow
-        int seat = data->free_seat; // id wolnego miejsca w pociagu
-        data->train_data[data->current_train][seat] = getpid(); // przypisanie pasazera do miejsca
-        data->free_seat++; // zwiekszenie liczby zajetych miejsc
-        data->passengers_waiting--; // zmniejszenie liczby oczekujacych pasazerow
-        printf(COLOR_MAGENTA "PASAZER: Pasazer %d zajal miejsce %d w pociagu.\n" COLOR_RESET, getpid(), seat + 1);
-        if (data->free_seat < MAX_PASSENGERS) semaphore_signal(sem_passengers_entry);
+        printf(COLOR_RED "PASAZER: Generowanie pasazerow zakonczone.\n" COLOR_RESET);
+        data->generating = 0; // generowanie na zakonczone
+        return;
     }
 
-    pause(); // proces czeka na sygnal (SIGTERM) od zarzadcy pociagu
-    printf(COLOR_PINK "PASAZER: Pasazer %d zakonczyl podroz.\n" COLOR_RESET, getpid());
-    exit(0); // proces pasazera konczy swoje dzialanie
+    int has_bike = rand() % 2; // przypisanie czy pasazer ma rower czy nie
+
+    if (has_bike)
+    {
+        semaphore_wait(sem_passengers_bikes); // czekanie na dostep do wejscia dla pasaserow z rowerami
+        if (data->free_bike_spots > 0)
+        {
+            semaphore_wait(sem_train_entry); // czekanie na pozwolenie na wejscie
+            data->passengers_waiting++;
+            data->passengers_with_bikes++;
+            data->free_bike_spots--;
+            data->passenger_pid = getpid();
+
+            printf(COLOR_MAGENTA "PASAZER: Na stacji pojawi sie nowy pasazer %d z rowerem.\n" COLOR_RESET, data->passenger_pid);
+            semaphore_signal(sem_train_entry); // zwolnienie miejsca na kolejnego pasasera
+        }
+        semaphore_signal(sem_passengers_bikes); // zwolnienie semafora dla rowerow
+    }
+    else
+    {
+        semaphore_wait(sem_passengers);
+
+        if (data->free_seat < MAX_PASSENGERS)
+        {
+            semaphore_wait(sem_train_entry); // czekanie na pozwolenie na wejscie
+            data->passengers_waiting++;
+            data->passenger_pid = getpid();
+
+            printf(COLOR_MAGENTA "PASAZER: Na stacji pojawi sie nowy pasazer %d.\n" COLOR_RESET, data->passenger_pid);
+            semaphore_signal(sem_train_entry); // zwolnienie miejsca na kolejnego pasazera
+        }
+        semaphore_signal(sem_passengers); // zwolnienie semafora dla pasaserow
+    }
+    kill(getpid(), SIGTERM);
 }
 
 #endif // PASSENGER_H

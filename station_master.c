@@ -4,11 +4,23 @@
 
 int main()
 {
-    setbuf(stdout, NULL);
     int memory;
     Data *data = NULL;
 
+    size_t dir_size = calculate_directory_size("."); // obliczanie rozmiaru katalogu
     size_t shared_memory_size = sizeof(Data); // obliczanie rozmiaru pamieci dzielonej
+
+    if (dir_size == 0) // obsluga bledu rozmiaru katalogu
+    {
+        fprintf(stderr, COLOR_RED "ZARZADCA: Nie mozna obliczyc rozmiaru katalogu.\n" COLOR_RESET);
+        exit(EXIT_FAILURE);
+    }
+
+    if (shared_memory_size > dir_size / 10) // sprawdzenie czy pamiec dzielona nie przekracza limitu
+    {
+        fprintf(stderr, COLOR_RED "ZARZADCA: Rozmiar pamieci dzielonej (%zu B) przekracza 10%% rozmiaru katalogu (%zu B).\n" COLOR_RESET, shared_memory_size, dir_size);
+        exit(EXIT_FAILURE);
+    }
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
@@ -16,28 +28,21 @@ int main()
     signal(SIGCONT, handle_continue); // wznowienie sygnalu
 
     int sem_train_entry = semaphore_create(SEM_KEY_TRAIN_ENTRY);
-    int sem_passengers_entry = semaphore_create(SEM_KEY_PASSENGERS_ENTRY);
-    int sem_passengers_exit = semaphore_create(SEM_KEY_PASSENGERS_EXIT);
-    int sem_bike_entry = semaphore_create(SEM_KEY_BIKE_ENTRY);
-    int sem_bike_exit = semaphore_create(SEM_KEY_BIKE_EXIT);
+    int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
+    int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
-    if (semctl(sem_passengers_entry, 0, SETVAL, 0) == -1) 
+    if (semctl(sem_train_entry, 0, SETVAL, 1) == -1) 
     {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia pasazerow");
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia do pociągu");
     }
-    if (semctl(sem_passengers_exit, 0, SETVAL, 0) == -1) 
+    if (semctl(sem_passengers_bikes, 0, SETVAL, 1) == -1)
     {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wyjścia pasazerow");
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow z rowerami");
     }
-    if (semctl(sem_bike_entry, 0, SETVAL, 0) == -1) 
+    if (semctl(sem_passengers, 0, SETVAL, 1) == -1)
     {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia pasazerow z rowerami");
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow bez rowerow");
     }
-    if (semctl(sem_bike_exit, 0, SETVAL, 0) == -1) 
-    {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wyjścia pasazerów z rowerami");
-    }
-
 
     data->current_train = 0; // reset wyboru pociagu
     data->free_seat = 0; // reset wolnych miejsc
@@ -45,41 +50,21 @@ int main()
     data->passengers_waiting = 0; // ustawienie poczatkowej liczby czekajacych pasazerow
     data->generating = 1; // pasazerowie sa generowani
 
-    int msgid = msgget(MSG_KEY, IPC_CREAT | 0600);
-    if (msgid == -1) 
+    semaphore_signal(sem_passengers_bikes); // odblokowanie aby uniknac konfliktu w synchronizacji
+    semaphore_signal(sem_passengers); // odblokowanie aby uniknac konfliktu w synchronizacji
+
+    pid_t train_manager_pid = fork(); // uruchomienie procesu kierownika pociagu
+    if (train_manager_pid < 0) // blad w fork
     {
-        handle_error("ZARZADCA: Blad tworzenia kolejki komunikatow");
+        handle_error("ZARZADCA: Blad fork dla train_manager");
     }
-    
-    pid_t train_manager_pids[MAX_TRAINS]; // generowanie kierownikow pociagow, po jednym dla kazdego pociagu
-
-    for (int train = 0; train < MAX_TRAINS; train++) 
+    if (train_manager_pid == 0) // kod w procesie potomnym
     {
-        pid_t train_manager_pid = fork();
-        if (train_manager_pid < 0) 
+        if (execl("./train_manager", "./train_manager", NULL) == -1) // sprawdzenie bledu execl
         {
-            handle_error("ZARZADCA: Blad fork dla train_manager");
+            handle_error("ZARZADCA: Blad execl pliku train_manager");
         }
-        if (train_manager_pid == 0) // proces potomny
-        {
-            if (execl("./train_manager", "./train_manager", NULL) == -1) 
-            {
-                handle_error("ZARZADCA: Blad execl pliku train_manager");
-            }
-        }
-
-        struct TrainMessage msg; // komunikat o danym numerze pociagu do kierownika
-        msg.mtype = train_manager_pid; // PID kierownika jako typ wiadomości
-        msg.train_number = train;
-        if (msgsnd(msgid, &msg, sizeof(msg.train_number), 0) == -1) 
-        {
-            handle_error("ZARZADCA: Blad wysylania numeru pociagu");
-        }
-
-        train_manager_pids[train] = train_manager_pid;
     }
-
-
 
     pid_t passenger_pid; // deklaracja pidu pasazera
 
@@ -104,21 +89,28 @@ int main()
         usleep(BLOCK_SLEEP * 100000);
         i++;
     }
-    data->generating = 0; // koniec generowania
+    data->generating = 0; // Zakończenie generowania
 
-    station_master(data, sem_passengers_entry, sem_bike_entry, msgid, sem_train_entry); // uruchomienie dzialania zarzadcy stacji
+    pthread_t keyboard_thread; 
 
-    // oczekiwanie na zakonczenie procesow potomnych
-    // wait_for_child_process(passenger_pid, "passenger");
-    // wait_for_child_process(train_manager_pid, "train_manager");
 
-    if (msgctl(msgid, IPC_RMID, NULL) == -1) 
-    {
-        handle_error("ZARZADCA: Blad usuwania kolejki komunikatow");
+    station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); 
+
+    wait_for_child_process(passenger_pid, "passenger");
+    wait_for_child_process(train_manager_pid, "train_manager");
+    
+    pthread_cancel(keyboard_thread);
+    wait_for_keyboard_thread(&keyboard_thread); 
+
+    if (data != NULL) {
+        shared_memory_detach(data); /
     }
-
-    shared_memory_detach(data); // zwolnienie pamieci dzielonej
-    shared_memory_remove(memory); // zwolnienie semaforow
+    if (memory >= 0) {
+        shared_memory_remove(memory); 
+    }
+    semaphore_remove(sem_train_entry); 
+    semaphore_remove(sem_passengers_bikes);
+    semaphore_remove(sem_passengers);
 
     return 0;
 }

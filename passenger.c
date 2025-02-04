@@ -4,7 +4,6 @@
 
 int main()
 {
-    setbuf(stdout, NULL);
     srand(time(NULL)); // generator liczb
 
     int memory; // id pamieci dzielonej
@@ -14,18 +13,21 @@ int main()
     shared_memory_address(memory, &data);
 
     signal(SIGCONT, handle_continue); // wznowienie sygnalu
-    int sem_passengers_entry = semaphore_create(SEM_KEY_PASSENGERS_ENTRY);
-    int sem_passengers_exit = semaphore_create(SEM_KEY_PASSENGERS_EXIT);
-    int sem_bike_entry = semaphore_create(SEM_KEY_BIKE_ENTRY);
-    int sem_bike_exit = semaphore_create(SEM_KEY_BIKE_EXIT);
 
-    //pthread_t keyboard_thread; // deklaracja zmiennej watku
-    //create_and_start_keyboard_thread(&keyboard_thread); // semafor do zarzadzania pasazerami
+    int sem_train_entry = semaphore_create(SEM_KEY_TRAIN_ENTRY);
+    int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
+    int sem_passengers = semaphore_create(SEM_KEY_PASSENGERS);
 
-    passenger_process(data, sem_passengers_entry, sem_bike_entry);
+    semaphore_signal(sem_train_entry);
+    semaphore_signal(sem_passengers_bikes);
+    semaphore_signal(sem_passengers);
 
-    //wait_for_keyboard_thread(&keyboard_thread);
+    pthread_t keyboard_thread; // deklaracja zmiennej watku
+    create_and_start_keyboard_thread(&keyboard_thread); // semafor do zarzadzania pasazerami
+
+    passengers_generating(data, sem_passengers_bikes, sem_passengers, sem_train_entry);
 
     printf(COLOR_PINK "PASAZER: Proces zakonczony\n" COLOR_RESET);
+
     return 0;
 }
