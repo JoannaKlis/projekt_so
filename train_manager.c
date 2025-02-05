@@ -2,19 +2,23 @@
 #include "train_manager.h"
 #include "signal.h"
 
-pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex dla pamięci współdzielonej
+pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int main()
+int main(int argc, char *argv[]) 
 {
+    if (argc < 2) 
+    {
+        handle_error("KIEROWNIK POCIAGU: brak takiego pociagu o tym numerze");
+    }
+
+    int train_id = atoi(argv[1]);  // pobranie numeru pociagu
+    printf("KIEROWNIK POCIAGU: Pociag %d jest gotowy.\n", train_id);
+
     int memory;
     Data *data = NULL;
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
-
-    if (data == NULL) {
-        handle_error("Failed to initialize shared memory data");
-    }
 
     signal(SIGCONT, handle_continue); // wznowienie sygnalu
 
@@ -26,12 +30,11 @@ int main()
     semaphore_signal(sem_passengers_bikes);
     semaphore_signal(sem_passengers);
 
+    data->current_train = train_id;  // ustawienie numeru aktualnego pociagu
+
     handle_passenger(data, sem_passengers_bikes, sem_passengers, sem_train_entry);
 
     shared_memory_detach(data);
-    semaphore_remove(sem_passengers_bikes);
-    semaphore_remove(sem_passengers);
-    semaphore_remove(sem_train_entry);
-
+    
     return 0;
 }

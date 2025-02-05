@@ -2,7 +2,7 @@
 #include "station_master.h"
 #include "signal.h"
 
-pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex dla pamięci współdzielonej
+pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; 
 
 int main()
 {
@@ -47,22 +47,28 @@ int main()
     semaphore_signal(sem_passengers_bikes); // odblokowanie aby uniknac konfliktu w synchronizacji
     semaphore_signal(sem_passengers); // odblokowanie aby uniknac konfliktu w synchronizacji
 
-    pid_t train_manager_pid = fork(); // uruchomienie procesu kierownika pociagu
-    if (train_manager_pid < 0) // blad w fork
+    pid_t train_manager_pid[MAX_TRAINS]; // tablica dla PIDow procesow kierownikow pociągow
+    int i;
+    for (i = 0; i < MAX_TRAINS; i++) 
     {
-        handle_error("ZARZADCA: Blad fork dla train_manager");
-    }
-    if (train_manager_pid == 0) // kod w procesie potomnym
-    {
-        if (execl("./train_manager", "./train_manager", NULL) == -1) // sprawdzenie bledu execl
+        train_manager_pid[i] = fork();
+        if (train_manager_pid[i] < 0)
         {
-            handle_error("ZARZADCA: Blad execl pliku train_manager");
+            handle_error("ZARZADCA: Blad fork dla train_manager");
+        }
+        if (train_manager_pid[i] == 0) // proces potomny
+        {
+            char train_id_str[10];
+            snprintf(train_id_str, sizeof(train_id_str), "%d", i); // konwersja ID pociagu do stringa
+            if (execl("./train_manager", "./train_manager", train_id_str, NULL) == -1)
+            {
+                handle_error("ZARZADCA: Blad execl pliku train_manager");
+            }
         }
     }
 
     pid_t passenger_pid; // deklaracja pidu pasazera
-
-    int i = 0;
+    i = 0;
     data->generating = 1; // flaga - generowanie rozpoczete
 
     while (i < MAX_PASSENGERS_GENERATE && running)
@@ -83,24 +89,27 @@ int main()
         usleep(BLOCK_SLEEP * 100000);
         i++;
     }
-    data->generating = 0; // Zakończenie generowania
+    data->generating = 0; // koniec generowania pasazerow
 
     pthread_t keyboard_thread; 
 
-    // Start station master process
-    station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); 
+    station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); // proces zarzadcy
 
-    if (data == NULL) 
+    // oczekiwanie na zakonczenie procesow potomnych
+    for (i = 0; i < MAX_TRAINS; i++) 
     {
-        handle_error("Blad dostepu do segmentu pamieci dzielonej");
+        wait_for_child_process(train_manager_pid[i], "train_manager");
     }
-
-    // Waiting for child processes to finish
+    
     wait_for_child_process(passenger_pid, "passenger");
-    wait_for_child_process(train_manager_pid, "train_manager");
+
+    printf(COLOR_BLUE "ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n" COLOR_RESET);
 
     shared_memory_detach(data); // zwolnienie pamieci dzielonej
     shared_memory_remove(memory); // zwolnienie semaforow
+    semaphore_remove(sem_passengers_bikes);
+    semaphore_remove(sem_passengers);
+    semaphore_remove(sem_train_entry);
 
     return 0;
 }

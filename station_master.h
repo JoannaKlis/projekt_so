@@ -21,7 +21,7 @@ void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, in
     {
         if (signal2 == 0)
         {
-            printf(COLOR_YELLOW "ZARZADCA: Sygnał blokady wejścia pasażerów (CTRL+L).\n" COLOR_RESET);
+            printf(COLOR_CYAN "ZARZADCA: Sygnal blokady wejscia pasazerow (CTRL+L).\n" COLOR_RESET);
             sleep(1); // tymczasowa blokada wejścia pasażerów na 1 sekundę
             signal2 = 1; // reset flagi signal2
         }
@@ -30,7 +30,7 @@ void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, in
 
         if (signal1 == 0)
         {
-            printf(COLOR_YELLOW "ZARZADCA: Natychmiastowy odjazd pociągu wymuszony sygnałem (CTRL+K).\n" COLOR_RESET);
+            printf(COLOR_CYAN "ZARZADCA: Natychmiastowy odjazd pociągu wymuszony sygnalem (CTRL+K).\n" COLOR_RESET);
             signal1 = 1; // reset flagi signal1
         }
         else if (run_for_Ttime())
@@ -61,7 +61,6 @@ void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, in
 
         if (data->passengers_waiting == 0 && !data->generating) // sprawdzenie, czy brak oczekujacych pasazerow oraz czy zakonczono generowanie
         {
-            printf(COLOR_BLUE "ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n" COLOR_RESET);
             data->generating = -1; // flaga - zarzadca konczy dzialanie
 
             // odblokowanie semaforow na zakonczenie dzialania

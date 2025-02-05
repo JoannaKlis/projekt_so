@@ -2,7 +2,7 @@
 #include "passenger.h"
 #include "signal.h"
 
-pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex dla pamięci współdzielonej
+pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main()
 {
@@ -13,10 +13,6 @@ int main()
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
-
-    if (data == NULL) {
-        handle_error("Failed to initialize shared memory data");
-    }
 
     signal(SIGCONT, handle_continue); // wznowienie sygnalu
 
