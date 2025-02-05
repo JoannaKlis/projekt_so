@@ -59,14 +59,21 @@ void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, in
 
         data->current_train = (data->current_train + 1) % MAX_TRAINS; // obieg z pociagami
 
-        if (data->passengers_waiting == 0 && !data->generating) // sprawdzenie, czy brak oczekujacych pasazerow oraz czy zakonczono generowanie
+        while (data->generating != -1) 
         {
-            data->generating = -1; // flaga - zarzadca konczy dzialanie
-
-            // odblokowanie semaforow na zakonczenie dzialania
-            semaphore_signal(sem_passengers);
-            semaphore_signal(sem_passengers_bikes);
-            break;
+            // Check if the PID array is empty
+            int i, empty = 1;
+            for (i = 0; i < MAX_PASSENGERS_GENERATE; i++) {
+                if (data->passenger_pids[i] != 0) {
+                    empty = 0;
+                    break;
+                }
+            }
+            if (empty && data->passengers_waiting == 0) {
+                // Stop if no passengers are left
+                data->generating = -1;
+                break;
+            }
         }
     }
 }

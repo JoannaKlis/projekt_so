@@ -24,6 +24,15 @@ void passengers_generating(Data *data, int sem_passengers_bikes, int sem_passeng
             data->free_bike_spots--;
             data->passenger_pid = getpid();
 
+            for (int i = 0; i < MAX_PASSENGERS_GENERATE; i++) // dodanie pidu do tablicy pasazerow
+            {
+                if (data->passenger_pids[i] == 0) 
+                {
+                    data->passenger_pids[i] = data->passenger_pid;
+                    break;
+                }
+            }
+
             printf(COLOR_MAGENTA "PASAZER: Na stacji pojawi sie nowy pasazer %d z rowerem.\n" COLOR_RESET, data->passenger_pid);
             semaphore_signal(sem_train_entry); // zwolnienie miejsca na kolejnego pasasera
         }
@@ -39,12 +48,21 @@ void passengers_generating(Data *data, int sem_passengers_bikes, int sem_passeng
             data->passengers_waiting++;
             data->passenger_pid = getpid();
 
+            for (int i = 0; i < MAX_PASSENGERS_GENERATE; i++) // dodanie pidu do tablicy pasazerow
+            {
+                if (data->passenger_pids[i] == 0) 
+                {
+                    data->passenger_pids[i] = data->passenger_pid;
+                    break;
+                }
+            }
+
             printf(COLOR_MAGENTA "PASAZER: Na stacji pojawi sie nowy pasazer %d.\n" COLOR_RESET, data->passenger_pid);
             semaphore_signal(sem_train_entry); // zwolnienie miejsca na kolejnego pasazera
         }
         semaphore_signal(sem_passengers); // zwolnienie semafora dla pasaserow
     }
-    kill(getpid(), SIGTERM);
+    //kill(getpid(), SIGTERM);
 }
 
 #endif // PASSENGER_H

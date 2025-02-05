@@ -53,6 +53,7 @@ typedef struct // struktura przechowujaca dane wspoldzielone
     short free_bike_spots; // liczba wolnych miejsc na rowery
     short passengers_with_bikes; // pasazerowie z rowerami
     pid_t passenger_pid;
+    pid_t passenger_pids[MAX_PASSENGERS_GENERATE]; // tablica pidow wygenerowanych pasazerow
 } Data;
 
 int run_for_Ttime() // odjazd pociagu po T czasie
