@@ -23,12 +23,12 @@
 #define SEM_KEY_TRAIN_ENTRY 0x2B314D1E // klucz semafora wejscia
 
 // limity i konfiguracje systemu
-#define MAX_PASSENGERS_GENERATE 40 // maksymalna liczba procesow pasazer do wygenerowania
+#define MAX_PASSENGERS_GENERATE 10 // maksymalna liczba procesow pasazer do wygenerowania
 #define MAX_PASSENGERS 20 // maksymalna liczba pasazerow w pociagu
 #define MAX_BIKES 5 // maksymalna liczba rowerow w pociagu
 #define MAX_TRAINS 4 // liczba pociagow
-#define TRAIN_DEPARTURE_TIME 12 // czas odjazdu pociagu (w sekundach)
-#define TRAIN_ARRIVAL_TIME 4 // czas przyjazdu pociagu na nastepna stacje (w sekundach)
+#define TRAIN_DEPARTURE_TIME 4 // czas odjazdu pociagu (w sekundach)
+#define TRAIN_ARRIVAL_TIME 2 // czas przyjazdu pociagu na nastepna stacje (w sekundach)
 #define BLOCK_SLEEP 1 // szybki dostep do wylaczenia funkcji sleep() - 0 aby wylaczyc
 #define PATH_MAX 4096
 

@@ -2,6 +2,8 @@
 #include "station_master.h"
 #include "signal.h"
 
+pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex dla pamięci współdzielonej
+
 int main()
 {
     int memory;
@@ -34,14 +36,6 @@ int main()
     if (semctl(sem_train_entry, 0, SETVAL, 1) == -1) 
     {
         handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia do pociągu");
-    }
-    if (semctl(sem_passengers_bikes, 0, SETVAL, 1) == -1)
-    {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow z rowerami");
-    }
-    if (semctl(sem_passengers, 0, SETVAL, 1) == -1)
-    {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla pasazerow bez rowerow");
     }
 
     data->current_train = 0; // reset wyboru pociagu
@@ -93,24 +87,20 @@ int main()
 
     pthread_t keyboard_thread; 
 
-
+    // Start station master process
     station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); 
 
+    if (data == NULL) 
+    {
+        handle_error("Blad dostepu do segmentu pamieci dzielonej");
+    }
+
+    // Waiting for child processes to finish
     wait_for_child_process(passenger_pid, "passenger");
     wait_for_child_process(train_manager_pid, "train_manager");
-    
-    pthread_cancel(keyboard_thread);
-    wait_for_keyboard_thread(&keyboard_thread); 
 
-    if (data != NULL) {
-        shared_memory_detach(data); /
-    }
-    if (memory >= 0) {
-        shared_memory_remove(memory); 
-    }
-    semaphore_remove(sem_train_entry); 
-    semaphore_remove(sem_passengers_bikes);
-    semaphore_remove(sem_passengers);
+    shared_memory_detach(data); // zwolnienie pamieci dzielonej
+    shared_memory_remove(memory); // zwolnienie semaforow
 
     return 0;
 }

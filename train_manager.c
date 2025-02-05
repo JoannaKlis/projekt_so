@@ -2,6 +2,8 @@
 #include "train_manager.h"
 #include "signal.h"
 
+pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex dla pamięci współdzielonej
+
 int main()
 {
     int memory;
@@ -9,6 +11,10 @@ int main()
 
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
+
+    if (data == NULL) {
+        handle_error("Failed to initialize shared memory data");
+    }
 
     signal(SIGCONT, handle_continue); // wznowienie sygnalu
 
@@ -23,10 +29,9 @@ int main()
     handle_passenger(data, sem_passengers_bikes, sem_passengers, sem_train_entry);
 
     shared_memory_detach(data);
-    shared_memory_remove(memory);
-    semaphore_remove(sem_train_entry);
     semaphore_remove(sem_passengers_bikes);
     semaphore_remove(sem_passengers);
+    semaphore_remove(sem_train_entry);
 
     return 0;
 }
