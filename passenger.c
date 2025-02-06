@@ -2,11 +2,12 @@
 #include "passenger.h"
 #include "signal.h"
 
-pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER;
+int passengers_out = 0; // flaga czyszczenia miejsca w pociagu
 
 int main()
 {
-    srand(time(NULL)); // generator liczb
+    srand(time(NULL)); // do losowosci pidow
+    setbuf(stdout, NULL);
 
     int memory; // id pamieci dzielonej
     Data *data = NULL; // wskaznik na strukture danych wspoldzielonych
@@ -24,15 +25,9 @@ int main()
     semaphore_signal(sem_passengers_bikes);
     semaphore_signal(sem_passengers);
 
-    pthread_t keyboard_thread; // deklaracja zmiennej watku
-    create_and_start_keyboard_thread(&keyboard_thread); // semafor do zarzadzania pasazerami
-
     data->generating = 1; // flaga - generowanie rozpoczete
 
     passengers_generating(data, sem_passengers_bikes, sem_passengers, sem_train_entry);
-
-    wait_for_keyboard_thread(&keyboard_thread);
-
-    printf(COLOR_PINK "PASAZER: Proces zakonczony\n" COLOR_RESET);
+    
     return 0;
 }

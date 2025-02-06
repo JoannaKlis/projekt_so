@@ -2,8 +2,6 @@
 #include "train_manager.h"
 #include "signal.h"
 
-pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 int main(int argc, char *argv[]) 
 {
     if (argc < 2) 
@@ -12,7 +10,7 @@ int main(int argc, char *argv[])
     }
 
     int train_id = atoi(argv[1]);  // pobranie numeru pociagu
-    printf("KIEROWNIK POCIAGU: Pociag %d jest gotowy.\n", train_id);
+    printf(COLOR_YELLOW "KIEROWNIK POCIAGU: Pociag %d jest gotowy.\n" COLOR_RESET, train_id + 1);
 
     int memory;
     Data *data = NULL;

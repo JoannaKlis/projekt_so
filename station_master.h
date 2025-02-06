@@ -15,11 +15,11 @@ void wait_for_child_process(pid_t pid, const char *process_name) // oczekiwanie 
     printf(COLOR_GREEN "ZARZADCA: Proces %s (PID: %d) zakonczony pomyslnie.\n" COLOR_RESET, process_name, pid);
 }
 
-void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, int sem_train_entry) // zarzadzanie pociagami
+void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, int sem_train_entry) 
 {
-    while (1)
+    while (1) 
     {
-        if (signal2 == 0)
+        if (signal2 == 0) 
         {
             printf(COLOR_CYAN "ZARZADCA: Sygnal blokady wejscia pasazerow (CTRL+L).\n" COLOR_RESET);
             sleep(1); // tymczasowa blokada wejścia pasażerów na 1 sekundę
@@ -28,17 +28,16 @@ void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, in
 
         sleep(BLOCK_SLEEP * 2); // oczekiwanie na wejscie pasazerow
 
-        if (signal1 == 0)
+        if (signal1 == 0) 
         {
             printf(COLOR_CYAN "ZARZADCA: Natychmiastowy odjazd pociągu wymuszony sygnalem (CTRL+K).\n" COLOR_RESET);
             signal1 = 1; // reset flagi signal1
-        }
-        else if (run_for_Ttime())
+        } else if (run_for_Ttime()) 
         {
             printf(COLOR_CYAN "ZARZADCA: Pociag %d odjezdza ze stacji 1.\n" COLOR_RESET, data->current_train + 1);
         }
 
-        printf(COLOR_CYAN "ZARZADCA: Liczba wszystkich oczekujacych: %d.\n" COLOR_RESET, data->passengers_waiting);
+        printf(COLOR_CYAN "ZARZADCA: Liczba oczekujacych pasazerow: %d.\n" COLOR_RESET, data->passengers_waiting);
 
         semaphore_wait(sem_passengers_bikes); // blokada wejscia do pociagu dla pasazerow z rowerami
         printf(COLOR_RED "ZARZADCA: Wejscie dla pasazerow z rowerami zablokowane.\n" COLOR_RESET);
@@ -59,21 +58,13 @@ void station_master(Data *data, int sem_passengers_bikes, int sem_passengers, in
 
         data->current_train = (data->current_train + 1) % MAX_TRAINS; // obieg z pociagami
 
-        while (data->generating != -1) 
+        if (data->passengers_arrived_at_station2 == MAX_PASSENGERS_GENERATE) 
         {
-            // Check if the PID array is empty
-            int i, empty = 1;
-            for (i = 0; i < MAX_PASSENGERS_GENERATE; i++) {
-                if (data->passenger_pids[i] != 0) {
-                    empty = 0;
-                    break;
-                }
-            }
-            if (empty && data->passengers_waiting == 0) {
-                // Stop if no passengers are left
-                data->generating = -1;
-                break;
-            }
+            printf(COLOR_CYAN "ZARZADCA: Wszyscy pasazerowie dotarli na stacje 2.\n" COLOR_RESET);
+            data->generating = -1;  // Flaga, aby zakonczyc generowanie pasazerow
+            semaphore_signal(sem_passengers);  // odblokowanie pasazerow
+            semaphore_signal(sem_passengers_bikes);  // odblokowanie rowerow
+            break;
         }
     }
 }

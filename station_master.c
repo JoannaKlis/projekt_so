@@ -2,7 +2,13 @@
 #include "station_master.h"
 #include "signal.h"
 
-pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER; 
+extern volatile sig_atomic_t running;
+
+void handle_sigint(int sig)
+{
+    printf(COLOR_RED "ZARZADCA: Wyslano sygnal SIGINT.\n" COLOR_RESET);
+    running = 0;
+}
 
 int main()
 {
@@ -27,7 +33,8 @@ int main()
     shared_memory_create(&memory);
     shared_memory_address(memory, &data);
 
-    signal(SIGCONT, handle_continue); // wznowienie sygnalu
+    setbuf(stdout, NULL);
+    signal(SIGINT, handle_sigint); // Correctly handling SIGINT for Ctrl+C
 
     int sem_train_entry = semaphore_create(SEM_KEY_TRAIN_ENTRY);
     int sem_passengers_bikes = semaphore_create(SEM_KEY_PASSENGERS_BIKES);
@@ -35,7 +42,15 @@ int main()
 
     if (semctl(sem_train_entry, 0, SETVAL, 1) == -1) 
     {
-        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejścia do pociągu");
+        handle_error("ZARZADCA: Blad inicjalizacji semafora dla wejsc do pociagu");
+    }
+    if (semctl(sem_passengers_bikes, 0, SETVAL, 1) == -1) 
+    {
+        handle_error("ZARZADCA: Blad inicjalizacji semafora wejscia dla pasazerow z rowerami");
+    }
+    if (semctl(sem_passengers, 0, SETVAL, 1) == -1) 
+    {
+        handle_error("ZARZADCA: Blad inicjalizacji semafora wejscia dla pasazerow");
     }
 
     data->current_train = 0; // reset wyboru pociagu
@@ -67,21 +82,21 @@ int main()
         }
     }
 
-    pid_t passenger_pid; // deklaracja pidu pasazera
+    pid_t passenger_pid[MAX_PASSENGERS_GENERATE];
     i = 0;
-    data->generating = 1; // flaga - generowanie rozpoczete
+    data->generating = 1;
 
     while (i < MAX_PASSENGERS_GENERATE && running)
     {
-        passenger_pid = fork();
+        passenger_pid[i] = fork();
 
-        if (passenger_pid < 0) // blad w fork
+        if (passenger_pid[i] < 0)
         {
             handle_error("ZARZADCA: Blad fork dla passenger");
         }
-        if (passenger_pid == 0) // kod w procesie potomnym
+        if (passenger_pid[i] == 0)
         {
-            if (execl("./passenger", "./passenger", NULL) == -1) // sprawdzenie bledu execl
+            if (execl("./passenger", "./passenger", NULL) == -1)
             {
                 handle_error("ZARZADCA: Blad execl pliku passenger");
             }
@@ -89,24 +104,24 @@ int main()
         usleep(BLOCK_SLEEP * 100000);
         i++;
     }
-    data->generating = 0; // koniec generowania pasazerow
+    data->generating = 0;
 
-    pthread_t keyboard_thread; 
+    station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry);
 
-    station_master(data, sem_passengers_bikes, sem_passengers, sem_train_entry); // proces zarzadcy
-
-    // oczekiwanie na zakonczenie procesow potomnych
     for (i = 0; i < MAX_TRAINS; i++) 
     {
         wait_for_child_process(train_manager_pid[i], "train_manager");
     }
-    
-    wait_for_child_process(passenger_pid, "passenger");
+
+    for (i = 0; i < MAX_PASSENGERS_GENERATE; i++) 
+    {
+        wait_for_child_process(passenger_pid[i], "passenger");
+    }
 
     printf(COLOR_BLUE "ZARZADCA: Nie ma oczekujacych pasazerow.\nKONIEC DZIALANIA.\n" COLOR_RESET);
 
-    shared_memory_detach(data); // zwolnienie pamieci dzielonej
-    shared_memory_remove(memory); // zwolnienie semaforow
+    shared_memory_detach(data);
+    shared_memory_remove(memory);
     semaphore_remove(sem_passengers_bikes);
     semaphore_remove(sem_passengers);
     semaphore_remove(sem_train_entry);

@@ -24,11 +24,11 @@
 
 // limity i konfiguracje systemu
 #define MAX_PASSENGERS_GENERATE 10 // maksymalna liczba procesow pasazer do wygenerowania
-#define MAX_PASSENGERS 20 // maksymalna liczba pasazerow w pociagu
+#define MAX_PASSENGERS 10 // maksymalna liczba pasazerow w pociagu
 #define MAX_BIKES 5 // maksymalna liczba rowerow w pociagu
 #define MAX_TRAINS 4 // liczba pociagow
-#define TRAIN_DEPARTURE_TIME 4 // czas odjazdu pociagu (w sekundach)
-#define TRAIN_ARRIVAL_TIME 2 // czas przyjazdu pociagu na nastepna stacje (w sekundach)
+#define TRAIN_DEPARTURE_TIME 10 // czas odjazdu pociagu (w sekundach)
+#define TRAIN_ARRIVAL_TIME 4 // czas przyjazdu pociagu na nastepna stacje (w sekundach)
 #define BLOCK_SLEEP 1 // szybki dostep do wylaczenia funkcji sleep() - 0 aby wylaczyc
 #define PATH_MAX 4096
 
@@ -49,6 +49,7 @@ typedef struct // struktura przechowujaca dane wspoldzielone
     short free_seat; // numer 1 wolnego miejsca w pociagu
     short train_data[MAX_TRAINS][MAX_PASSENGERS]; // tablica PIDow pasazerow w pociagach
     short passengers_waiting; // liczba oczekujacych pasazerow
+    short passengers_arrived_at_station2; // liczba pasazerow ktorzy dotarli na stacje 2
     short generating; // flaga czy pasazerowie sa generowani
     short free_bike_spots; // liczba wolnych miejsc na rowery
     short passengers_with_bikes; // pasazerowie z rowerami
